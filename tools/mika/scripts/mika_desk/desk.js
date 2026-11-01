@@ -1822,21 +1822,14 @@ function setActiveNav(id) {
 
 $("nav-tasks")?.addEventListener("click", () => {
   setActiveNav("nav-tasks");
+  switchDshView("tasks");
   $("goal")?.focus();
   window.scrollTo({top: 0, behavior: "smooth"});
 });
 
 $("nav-coder")?.addEventListener("click", () => {
   setActiveNav("nav-coder");
-  const chk = $("chk-coder-team");
-  if (chk) chk.checked = true;
-  $("goal")?.focus();
-  const board = $("coder-board");
-  if (board && !board.hidden) {
-    board.scrollIntoView({behavior: "smooth"});
-  } else {
-    $("compose")?.scrollIntoView({behavior: "smooth"});
-  }
+  switchDshView("coder");
 });
 
 $("nav-mcp")?.addEventListener("click", () => {
@@ -1907,14 +1900,15 @@ document.querySelectorAll(".welcome-card").forEach(card => {
 
 function switchDshView(viewName) {
   const isVibe = (viewName === "vibe-coding");
-  const isTasks = (viewName === "tasks");
+  const isTasks = (viewName === "tasks" || viewName === "coder");
   const isOverview = (viewName === "overview");
 
   if ($("view-vibe-coding")) $("view-vibe-coding").hidden = !isVibe;
+  if ($("view-tasks")) $("view-tasks").hidden = !isTasks && !isOverview;
   if ($("compose")) $("compose").hidden = !isTasks && !isOverview;
   const cols = document.querySelector(".columns");
   if (cols) cols.hidden = !isTasks && !isOverview;
-  if ($("dsh-super-banner")) $("dsh-super-banner").hidden = !isOverview && !isTasks;
+  if ($("dsh-super-banner")) $("dsh-super-banner").hidden = !isOverview;
 
   const panels = {
     triggers: $("dsh-triggers-panel"),
@@ -1925,6 +1919,15 @@ function switchDshView(viewName) {
   Object.keys(panels).forEach(k => {
     if (panels[k]) panels[k].hidden = (k !== viewName);
   });
+
+  if (viewName === "coder") {
+    const chk = $("chk-coder-team");
+    if (chk) chk.checked = true;
+    const board = $("coder-board");
+    if (board) board.hidden = false;
+    $("goal")?.focus();
+    board?.scrollIntoView({behavior: "smooth", block: "nearest"});
+  }
 
   if (viewName === "triggers") loadDshTriggers("all");
   if (viewName === "evals") loadDshEvals();

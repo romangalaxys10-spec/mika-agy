@@ -236,7 +236,10 @@
         </div>
       </div>
     </div>
-    <div class="heading">
+
+    <!-- Tasks Desk View (#view-tasks) -->
+    <div id="view-tasks" class="view-panel" hidden>
+      <div class="heading">
       <div><h1 data-i18n="heading">Task desk</h1><p data-i18n="intro">Hand tasks to Mika Agent on macOS, follow progress and inspect deliverables.</p></div>
       <div class="refresh"><small id="updated" data-i18n="autoUpdate">Updates automatically</small><button id="refresh" type="button" data-i18n="refreshNow">Update now</button></div>
     </div>
@@ -422,6 +425,7 @@
         <button class="stop" id="cancel" type="button" hidden data-i18n="cancelTask">Cancel task</button>
       </section>
     </div>
+    </div> <!-- /#view-tasks -->
 
     <!-- DSH Triggers & Threads Panel (docs/001 & docs/005) -->
     <div id="dsh-triggers-panel" class="panel dsh-view-panel" hidden>
