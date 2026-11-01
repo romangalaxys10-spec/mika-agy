@@ -191,12 +191,8 @@ class Desk(ThreadingHTTPServer):
         if action == "project_tree":
             ws_path = data.get("workspace")
             if not ws_path or not os.path.exists(ws_path):
-                projects_dir = Path(os.path.expanduser("~/.mika/projects"))
-                if projects_dir.exists():
-                    subdirs = sorted([p for p in projects_dir.iterdir() if p.is_dir()], key=lambda p: p.stat().st_mtime, reverse=True)
-                    if subdirs:
-                        ws_path = str(subdirs[0])
-            p = Path(ws_path or os.path.expanduser("~/.mika/projects")).resolve()
+                return {"workspace": "", "files": []}
+            p = Path(ws_path).resolve()
             files = []
             if p.exists() and p.is_dir():
                 for item in sorted(p.glob("**/*")):
@@ -224,12 +220,8 @@ class Desk(ThreadingHTTPServer):
         if action == "project_run":
             ws_path = data.get("workspace")
             if not ws_path or not os.path.exists(ws_path):
-                projects_dir = Path(os.path.expanduser("~/.mika/projects"))
-                if projects_dir.exists():
-                    subdirs = sorted([p for p in projects_dir.iterdir() if p.is_dir()], key=lambda p: p.stat().st_mtime, reverse=True)
-                    if subdirs:
-                        ws_path = str(subdirs[0])
-            p = Path(ws_path or os.path.expanduser("~/.mika/projects")).resolve()
+                return {"stdout": "", "stderr": "No project workspace found. Please select an active project with files.", "exit_code": 1, "duration": 0, "command": ""}
+            p = Path(ws_path).resolve()
             cmd_type = data.get("command", "main")
             import subprocess
             exec_cmd = [sys.executable, "-m", "unittest", "test_suite.py"] if cmd_type == "test" else [sys.executable, "main.py", "--action", "run"]

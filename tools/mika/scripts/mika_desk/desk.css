@@ -101,6 +101,21 @@ textarea::placeholder { color: var(--muted); opacity: 1; }
 .columns { display: grid; grid-template-columns: minmax(0, .86fr) minmax(0, 1.14fr); gap: 16px; align-items: start; }
 .section-head { margin-bottom: 6px; }
 .count, .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; background: var(--fill); color: var(--muted); font-size: 12px; white-space: nowrap; }
+.btn-new-task { padding: 4px 12px; font-size: 12px; font-weight: 700; border-radius: 16px; background: var(--accent-soft); color: var(--action); border: 1px solid var(--accent); cursor: pointer; transition: all 0.15s ease; }
+.btn-new-task:hover { background: var(--action); color: #fff; transform: translateY(-1px); }
+
+/* DeepSeek & ZCode Welcome Canvas */
+.detail-welcome { padding: 12px 0 16px; }
+.welcome-header { margin-bottom: 20px; }
+.welcome-icon { font-size: 28px; display: block; margin-bottom: 8px; }
+.welcome-header h3 { font-size: 19px; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+.welcome-header p { font-size: 13px; color: var(--muted); }
+.welcome-cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 14px; }
+.welcome-card { background: var(--fill); border: 1px solid var(--line); border-radius: 12px; padding: 14px; cursor: pointer; transition: all 0.18s ease; display: flex; flex-direction: column; gap: 6px; }
+.welcome-card:hover { background: var(--surface); border-color: var(--accent); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08); transform: translateY(-2px); }
+.wc-icon { font-size: 22px; line-height: 1; }
+.wc-title { font-size: 13px; font-weight: 700; color: var(--ink); }
+.wc-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
 .badge[data-tone="attention"] { background: var(--warn-soft); color: var(--warn); }
 .badge[data-tone="active"] { background: var(--accent-soft); color: var(--action); }
 .badge[data-tone="good"] { background: var(--ok-soft); color: var(--ok); }

@@ -15,6 +15,7 @@
       <strong><img src="/mika-logo.png" width="36" height="36" alt="">Mika AGY 2.0</strong>
       <span class="brand-tag">DeepSeek × ZCode</span>
       <nav class="top-nav">
+        <button type="button" class="nav-pill" id="nav-new-task">➕ New Task</button>
         <button type="button" class="nav-pill active" id="nav-tasks">📱 Tasks</button>
         <button type="button" class="nav-pill" id="nav-coder">🧑‍💻 Coder Team</button>
         <button type="button" class="nav-pill" id="nav-mcp">🧩 MCP Hub</button>
@@ -54,6 +55,7 @@
         <button type="button" class="preset-btn" data-goal="Подготовь коммерческое предложение и программу туров в Грузию 2027 в Word">📑 Оффер и программа (Word .docx)</button>
         <button type="button" class="preset-btn" data-goal="Проведи исследование рынка туризма и цен в Грузии 2027">🔍 Анализ рынка и цен 2027</button>
         <button type="button" class="preset-btn" data-goal="Собери все материалы проекта Грузия 2027 в организованную папку на Рабочем столе">📁 Организовать проект на Desktop</button>
+        <button type="button" class="preset-btn" data-goal="Создай интерактивный дизайн-макет для веб-сервиса www.anytest.dev в одном файле HTML5" style="border-color: #38bdf8; color: #38bdf8;">🌐 HTML5 Mockup: www.anytest.dev</button>
         <button type="button" class="preset-btn" data-goal="Спроектируй и разработай full-stack сервис с архитектурным планом, тестами и QA" style="border-color: #a855f7; color: #a855f7;">🚀 Coder Team: Создать проект под ключ</button>
         <button type="button" class="preset-btn" data-goal="Проведи полный аудит кода, тесты самоисцеления QA и аттестацию Witness" style="border-color: #a855f7; color: #a855f7;">🧪 Coder Team: Архитектурный аудит & QA</button>
       </div>
@@ -67,14 +69,50 @@
     </form>
     <div class="columns">
       <section class="panel inbox" aria-labelledby="inbox-title">
-        <div class="section-head"><h2 id="inbox-title" data-i18n="recentTasks">Recent tasks</h2><span id="count" class="count">0</span></div>
+        <div class="section-head">
+          <h2 id="inbox-title" data-i18n="recentTasks">Recent tasks</h2>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button type="button" id="btn-new-task" class="btn-new-task" title="Start fresh new task">+ New task</button>
+            <span id="count" class="count">0</span>
+          </div>
+        </div>
         <p class="hint" data-i18n="recentHint">The latest 50 remote tasks; ones that need you come first.</p>
         <div id="tasks"></div>
       </section>
       <section class="panel detail" aria-labelledby="detail-title">
         <div class="section-head"><h2 id="detail-title" data-i18n="taskDetail">Task details</h2><span id="status" class="badge" hidden></span></div>
         <div id="facts">
-          <p id="detail-empty" class="empty" data-i18n="detailEmpty">Pick a task to see the progress, live board and deliverables.</p>
+          <!-- DeepSeek / ZCode Welcome Canvas for New Tasks -->
+          <div id="detail-welcome" class="detail-welcome">
+            <div class="welcome-header">
+              <span class="welcome-icon">✨</span>
+              <h3>Привет, Катенька! Что создаем?</h3>
+              <p>Выбери готовый сценарий или сформулируй задачу в поле ввода выше 🐱🐾</p>
+            </div>
+            <div class="welcome-cards-grid">
+              <div class="welcome-card" data-prompt="Создай интерактивный дизайн-макет для веб-сервиса www.anytest.dev в одном файле HTML5">
+                <span class="wc-icon">🌐</span>
+                <span class="wc-title">Web & HTML5 Design Mockup</span>
+                <span class="wc-desc">Single-file адаптивный UI макет www.anytest.dev с компонентами</span>
+              </div>
+              <div class="welcome-card" data-prompt="Спроектируй и разработай full-stack сервис с архитектурным планом, тестами и QA">
+                <span class="wc-icon">🧑‍💻</span>
+                <span class="wc-title">Full-Stack Coder Team</span>
+                <span class="wc-desc">Архитектура, чистый код, самоисцеляющиеся тесты</span>
+              </div>
+              <div class="welcome-card" data-prompt="Рассчитай финансовую модель и бюджет туров в Грузию 2027 в таблице Excel">
+                <span class="wc-icon">📊</span>
+                <span class="wc-title">Excel & Финансовая модель</span>
+                <span class="wc-desc">Формулы, маржа, юнит-экономика и расчет бюджета</span>
+              </div>
+              <div class="welcome-card" data-prompt="Создай презентацию туров в Грузию 2027 в PowerPoint и проведи со мной брейншторм">
+                <span class="wc-icon">📽️</span>
+                <span class="wc-title">PowerPoint Презентация</span>
+                <span class="wc-desc">Дизайнерская колода слайдов с готовой структурой</span>
+              </div>
+            </div>
+          </div>
+          <p id="detail-empty" class="empty" data-i18n="detailEmpty" hidden>Pick a task to see the progress, live board and deliverables.</p>
           <div id="task-now" hidden>
             <strong id="task-step" hidden></strong>
             <p id="task-message"></p>

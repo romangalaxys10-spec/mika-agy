@@ -161,6 +161,7 @@ function choose(task) {
   selectedId = task?.task_id || null;
   if (selectedId) sessionStorage.setItem("selectedTask", selectedId);
   else sessionStorage.removeItem("selectedTask");
+  currentPreviewWs = task?.workspace || "";
 }
 
 function taskMessage(task) {
@@ -225,10 +226,14 @@ function render() {
   const notes = $("task-notes");
   notes.replaceChildren();
   const task = selected;
-  $("detail-empty").hidden = !!task;
+  if ($("detail-welcome")) $("detail-welcome").hidden = !!task;
+  $("detail-empty").hidden = true;
   $("task-now").hidden = !task;
   $("task-info").hidden = !task;
   $("status").hidden = !task;
+  if ($("task-artifacts")) $("task-artifacts").hidden = !task;
+  if ($("task-actions")) $("task-actions").hidden = !task;
+  if ($("coder-board")) $("coder-board").hidden = !task;
   const action = task?.status === "waiting_for_answer" ? "answer" :
     task?.status === "running" && overview?.capabilities.includes("task_steer") ? "steer" : null;
   $("respond").hidden = !action;
@@ -541,6 +546,14 @@ $("compose").addEventListener("submit", event => {
   const isHorizon = $("chk-long-horizon")?.checked;
   const isCoder = $("chk-coder-team")?.checked;
   work(async () => {
+    // Instantly reset state so earlier task deliverables don't linger
+    choose(null);
+    if ($("task-artifacts")) $("task-artifacts").hidden = true;
+    if ($("artifacts-list")) $("artifacts-list").replaceChildren();
+    if ($("coder-board")) $("coder-board").hidden = true;
+    currentPreviewWs = "";
+    render();
+
     const task = await call("run", {goal});
     choose(task);
     $("goal").value = "";
@@ -581,8 +594,12 @@ $("compose").addEventListener("submit", event => {
           if (st) st.textContent = "Done";
         });
         
-        if (res?.result?.workspace) currentPreviewWs = res.result.workspace;
+        if (res?.result?.workspace) {
+          currentPreviewWs = res.result.workspace;
+          if (selected) selected.workspace = res.result.workspace;
+        }
         const arts = res?.result?.artifacts || [];
+        if (selected) selected.artifacts = arts;
         if (arts.length && $("task-artifacts") && $("artifacts-list")) {
           $("task-artifacts").hidden = false;
           $("artifacts-list").replaceChildren();
@@ -868,20 +885,29 @@ function showPreviewTab(tab) {
 }
 
 async function openProjectPreview(workspacePath) {
+  const ws = workspacePath || selected?.workspace || currentPreviewWs;
   if (previewModal) previewModal.hidden = false;
   showPreviewTab("code");
   const treeContainer = $("preview-file-tree");
+  if (!ws) {
+    if (treeContainer) treeContainer.innerHTML = '<p class="hint">У выбранной задачи пока нет файлов в песочнице. Запустите Coder Team или создайте файлы.</p>';
+    if ($("preview-code-content")) $("preview-code-content").textContent = "Файлы проекта еще не созданы.";
+    if ($("preview-workspace-pill")) $("preview-workspace-pill").textContent = "none";
+    if ($("preview-project-title")) $("preview-project-title").textContent = "🚀 Live Sandbox: Empty";
+    return;
+  }
   if (treeContainer) treeContainer.innerHTML = '<p class="hint">Загрузка структуры проекта...</p>';
 
   try {
-    const res = await call("project_tree", {workspace: workspacePath || currentPreviewWs});
+    const res = await call("project_tree", {workspace: ws});
     currentPreviewWs = res.workspace || "";
-    if ($("preview-workspace-pill")) $("preview-workspace-pill").textContent = currentPreviewWs;
-    if ($("preview-project-title")) $("preview-project-title").textContent = `🚀 Live Sandbox: ${currentPreviewWs.split("/").pop()}`;
+    if ($("preview-workspace-pill")) $("preview-workspace-pill").textContent = currentPreviewWs || ws;
+    if ($("preview-project-title")) $("preview-project-title").textContent = `🚀 Live Sandbox: ${(currentPreviewWs || ws).split("/").pop()}`;
 
     const files = res.files || [];
     if (!files.length) {
       if (treeContainer) treeContainer.innerHTML = '<p class="hint">Файлы проекта не найдены.</p>';
+      if ($("preview-code-content")) $("preview-code-content").textContent = "Файлы не найдены.";
       return;
     }
 
@@ -902,10 +928,13 @@ async function openProjectPreview(workspacePath) {
       });
     }
 
-    // Default open first important file (main.py, PLAN.md, or index 0)
-    const defFile = files.find(f => f.name === "PLAN.md") || files.find(f => f.name === "main.py") || files[0];
+    // Default open first important file (index.html, PLAN.md, main.py, or index 0)
+    const defFile = files.find(f => f.name === "index.html") || files.find(f => f.name === "PLAN.md") || files.find(f => f.name === "main.py") || files[0];
     if (defFile) {
       loadPreviewFile(defFile.path, defFile.name, (defFile.size / 1024).toFixed(1) + " KB", defFile.ext);
+      if (defFile.ext === ".html") {
+        showPreviewTab("web");
+      }
     }
   } catch (err) {
     if (treeContainer) treeContainer.innerHTML = `<p class="hint">Ошибка чтения файлов: ${err.message || err}</p>`;
@@ -1057,6 +1086,31 @@ document.addEventListener("keydown", (e) => {
       $("respond")?.dispatchEvent(new Event("submit", {cancelable: true}));
     }
   }
+});
+
+function startNewTask() {
+  setActiveNav("nav-new-task");
+  choose(null);
+  $("goal").value = "";
+  $("goal").focus();
+  currentPreviewWs = "";
+  render();
+  window.scrollTo({top: 0, behavior: "smooth"});
+}
+
+$("btn-new-task")?.addEventListener("click", startNewTask);
+$("nav-new-task")?.addEventListener("click", startNewTask);
+
+document.querySelectorAll(".welcome-card").forEach(card => {
+  card.addEventListener("click", () => {
+    const prompt = card.dataset.prompt;
+    if (prompt) {
+      $("goal").value = prompt;
+      $("goal").focus();
+      if ($("submit-goal")) $("submit-goal").disabled = false;
+      $("compose")?.scrollIntoView({behavior: "smooth"});
+    }
+  });
 });
 
 render();
