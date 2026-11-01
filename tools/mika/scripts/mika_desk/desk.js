@@ -2480,8 +2480,8 @@ async function sendVibeMessage() {
   userCard.className = "vibe-user-bubble";
   userCard.innerHTML = `
     <div class="vibe-user-meta">
-      <strong>Катенька 👤</strong>
-      <span>${new Date().toLocaleTimeString()}</span>
+      <strong>Катенька 😻</strong>
+      <span>${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
     </div>
     <div style="white-space:pre-wrap;">${escapeHtml(promptText)}</div>
   `;
@@ -2495,10 +2495,10 @@ async function sendVibeMessage() {
   agentCard.id = `agent-card-${Date.now()}`;
   agentCard.innerHTML = `
     <div class="gen-card-header">
-      <span class="gen-model-badge">⚡ ${currentVibeModel.toUpperCase()} · ${currentVibeMode.toUpperCase()}</span>
-      <span style="font-size:11px; color:#38bdf8;">🧠 Synthesizing Generative UI & Code Diffs...</span>
+      <span class="gen-model-badge">✦ ${currentVibeModel.toUpperCase()}</span>
+      <span style="font-size:11.5px; color:var(--gemini-blue);">✦ Thinking & generating solution...</span>
     </div>
-    <div class="skeleton-shimmer" style="height:32px; background:rgba(255,255,255,0.04); border-radius:6px; margin-bottom:8px;"></div>
+    <div class="skeleton-shimmer" style="height:32px; background:rgba(255,255,255,0.04); border-radius:12px; margin-bottom:8px;"></div>
   `;
   stream.appendChild(agentCard);
   stream.scrollTop = stream.scrollHeight;
@@ -2560,19 +2560,19 @@ async function sendVibeMessage() {
 
     agentCard.innerHTML = `
       <div class="gen-card-header">
-        <span class="gen-model-badge">⚡ ${turn.model.toUpperCase()} · ${turn.mode.toUpperCase()}</span>
-        <span style="font-size:11px; color:#94a3b8;">${new Date().toLocaleTimeString()}</span>
+        <span class="gen-model-badge">✦ ${turn.model.toUpperCase()} · ${turn.mode.toUpperCase()}</span>
+        <span style="font-size:11px; color:var(--text-tertiary);">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
       </div>
       
       <details class="cursor-thinking-accordion" open>
-        <summary>🧠 Chain of Thought (Thinking Process) · Anti-AI-UI Guard Active</summary>
+        <summary>✦ Thinking process (${turn.model})</summary>
         <div class="cursor-thinking-body">${escapeHtml(turn.thought)}</div>
       </details>
 
       ${toolsHtml}
 
-      <div style="font-size:13px; color:#f1f5f9; line-height:1.6; margin:10px 0;">
-        Готово, Катенька! Код спроектирован по строгим стандартам <b>Anti-AI-UI</b> (без фиолетовых градиентов, с высокой контрастностью и чистой архитектурой) и уже загружен в <b>Intelligent Canvas</b> справа 🐱🐾
+      <div style="font-size:13.5px; color:var(--text-primary); line-height:1.6; margin:10px 0;">
+        Готово, Катенька! Код спроектирован в чистом стиле <b>Antigravity / Gemini</b> и загружен в <b>Intelligent Canvas</b> 🐱🐾
       </div>
 
       ${diffsHtml}
