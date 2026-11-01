@@ -8,8 +8,10 @@ import os
 import re
 import secrets
 import sys
+import time
 import threading
 import webbrowser
+from pathlib import Path
 
 from mika_cli import Adb, CliError, connection, execute, recent_tasks, redact
 
@@ -28,7 +30,8 @@ FIELDS = {
     "steer": {"task_id", "text"}, "open_file": {"path"},
     "mcp_market": set(), "mcp_servers": set(), "mcp_install": {"id"},
     "mcp_uninstall": {"id"}, "mcp_toggle": {"id"}, "horizon": {"task_id"}, "mcp_search": {"query"},
-    "coder_team": {"task_id", "goal"}
+    "coder_team": {"task_id", "goal"},
+    "project_tree": {"workspace"}, "project_read_file": {"path"}, "project_run": {"workspace", "command"}
 }
 
 
@@ -168,6 +171,77 @@ class Desk(ThreadingHTTPServer):
                 return mcp_engine.toggle_server(data.get("id"), data.get("enabled", True))
             except Exception as e:
                 return {"error": str(e)}
+
+        if action == "project_tree":
+            ws_path = data.get("workspace")
+            if not ws_path or not os.path.exists(ws_path):
+                projects_dir = Path(os.path.expanduser("~/.mika/projects"))
+                if projects_dir.exists():
+                    subdirs = sorted([p for p in projects_dir.iterdir() if p.is_dir()], key=lambda p: p.stat().st_mtime, reverse=True)
+                    if subdirs:
+                        ws_path = str(subdirs[0])
+            p = Path(ws_path or os.path.expanduser("~/.mika/projects")).resolve()
+            files = []
+            if p.exists() and p.is_dir():
+                for item in sorted(p.glob("**/*")):
+                    if item.is_file() and not item.name.startswith("."):
+                        files.append({
+                            "name": item.name,
+                            "rel_path": str(item.relative_to(p)),
+                            "path": str(item),
+                            "size": item.stat().st_size,
+                            "ext": item.suffix.lower()
+                        })
+            return {"workspace": str(p), "files": files}
+
+        if action == "project_read_file":
+            file_path = data.get("path", "")
+            p = Path(file_path).resolve()
+            if p.exists() and p.is_file():
+                try:
+                    content = p.read_text(encoding="utf-8", errors="replace")
+                    return {"path": str(p), "name": p.name, "content": content, "size": p.stat().st_size}
+                except Exception as e:
+                    return {"error": str(e)}
+            return {"error": "file not found"}
+
+        if action == "project_run":
+            ws_path = data.get("workspace")
+            if not ws_path or not os.path.exists(ws_path):
+                projects_dir = Path(os.path.expanduser("~/.mika/projects"))
+                if projects_dir.exists():
+                    subdirs = sorted([p for p in projects_dir.iterdir() if p.is_dir()], key=lambda p: p.stat().st_mtime, reverse=True)
+                    if subdirs:
+                        ws_path = str(subdirs[0])
+            p = Path(ws_path or os.path.expanduser("~/.mika/projects")).resolve()
+            cmd_type = data.get("command", "main")
+            import subprocess
+            exec_cmd = [sys.executable, "-m", "unittest", "test_suite.py"] if cmd_type == "test" else [sys.executable, "main.py", "--action", "run"]
+            start_t = time.time()
+            try:
+                proc = subprocess.run(
+                    exec_cmd,
+                    cwd=str(p),
+                    capture_output=True,
+                    text=True,
+                    timeout=20
+                )
+                duration = round(time.time() - start_t, 3)
+                return {
+                    "stdout": proc.stdout,
+                    "stderr": proc.stderr,
+                    "exit_code": proc.returncode,
+                    "duration": duration,
+                    "command": " ".join(exec_cmd)
+                }
+            except Exception as e:
+                return {
+                    "stdout": "",
+                    "stderr": str(e),
+                    "exit_code": -1,
+                    "duration": round(time.time() - start_t, 3),
+                    "command": " ".join(exec_cmd)
+                }
 
         self.pin_target(data.get("device"))
         if action in {"overview", "select", "watch"}:

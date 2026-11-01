@@ -112,8 +112,36 @@ def run_qa():
         data = json.loads(resp.read().decode("utf-8"))
         assert data.get("status") == "completed"
         res = data.get("result", {})
+        ws = res.get("workspace")
         assert len(res.get("artifacts", [])) >= 5
         print(f"✅ POST /desk (coder_team): 200 OK — Coder Team delivered {len(res['artifacts'])} verified artifacts in {res['duration']}s!")
+
+    # 7. Test POST /desk (project_tree Live Preview)
+    post_data = json.dumps({"action": "project_tree", "workspace": ws}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert "files" in data
+        assert len(data["files"]) >= 5
+        print(f"✅ POST /desk (project_tree): 200 OK — Loaded tree with {len(data['files'])} project files!")
+
+    # 8. Test POST /desk (project_read_file Live Preview)
+    plan_path = str(Path(ws) / "PLAN.md")
+    post_data = json.dumps({"action": "project_read_file", "path": plan_path}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert "content" in data
+        assert "Architecture" in data["content"]
+        print(f"✅ POST /desk (project_read_file): 200 OK — Read {data['name']} ({data['size']} bytes) successfully!")
+
+    # 9. Test POST /desk (project_run Live Execution)
+    post_data = json.dumps({"action": "project_run", "workspace": ws, "command": "test"}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data.get("exit_code") == 0
+        print(f"✅ POST /desk (project_run Live Execution): 200 OK — Executed '{data['command']}' in {data['duration']}s with exit_code=0!")
 
     server.shutdown()
     print("🎉 ALL QA TESTS PASSED! ZERO LOAD FAILED OR DISCONNECT ISSUES!")

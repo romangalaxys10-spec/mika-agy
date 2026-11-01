@@ -74,8 +74,11 @@
           <div id="task-notes"></div>
           <div id="coder-board" class="coder-board" hidden>
             <div class="coder-board-header">
-              <strong>🧑‍💻 Coder Team Live Multi-Agent Board</strong>
-              <span id="coder-phase-badge" class="badge">PLAN</span>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <strong>🧑‍💻 Coder Team Live Multi-Agent Board</strong>
+                <span id="coder-phase-badge" class="badge">PLAN</span>
+              </div>
+              <button type="button" id="btn-open-preview" class="action-btn preview-launch-btn">👁️ Live Preview</button>
             </div>
             <div class="coder-agents-grid">
               <div class="coder-agent-card active" id="agent-architect">
@@ -121,6 +124,7 @@
             <div id="artifacts-list" class="artifacts-grid"></div>
           </div>
           <div id="task-actions" class="task-actions-row" hidden>
+            <button id="btn-open-preview-main" type="button" class="action-btn preview-launch-btn">👁️ Project Live Preview</button>
             <button id="btn-rerun" type="button" class="action-btn">🔄 Повторить задачу</button>
             <button id="btn-modify" type="button" class="action-btn">✏️ Изменить и перезапустить</button>
           </div>
@@ -184,6 +188,95 @@
             </div>
             <button type="submit" class="primary">📦 Установить MCP Сервер</button>
           </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project Live Preview Sandbox Modal -->
+  <div id="project-preview-modal" class="preview-modal" hidden>
+    <div class="preview-modal-content">
+      <div class="preview-modal-header">
+        <div class="preview-header-left">
+          <span class="preview-badge">LIVE SANDBOX</span>
+          <h3 id="preview-project-title">🚀 Project Live Preview</h3>
+          <span id="preview-workspace-pill" class="workspace-pill">~/.mika/projects</span>
+        </div>
+        <div class="preview-header-actions">
+          <button type="button" id="btn-run-live" class="preview-btn run-btn" title="Run main.py live">▶ Run Live</button>
+          <button type="button" id="btn-run-tests" class="preview-btn test-btn" title="Run test_suite.py">🧪 Run Tests</button>
+          <button type="button" id="btn-reveal-finder" class="preview-btn secondary-btn" title="Reveal in macOS Finder">📂 Finder</button>
+          <button type="button" id="btn-close-preview" class="close-btn" aria-label="Close Preview">✕</button>
+        </div>
+      </div>
+
+      <div class="preview-modal-body">
+        <!-- Sidebar: Project Explorer -->
+        <div class="preview-sidebar">
+          <div class="sidebar-header">
+            <strong>📁 Файлы проекта</strong>
+            <button type="button" id="btn-refresh-tree" class="icon-refresh" title="Обновить дерево">🔄</button>
+          </div>
+          <div id="preview-file-tree" class="preview-file-tree">
+            <p class="hint">Загрузка файлов...</p>
+          </div>
+        </div>
+
+        <!-- Main Preview Area -->
+        <div class="preview-main">
+          <div class="preview-tabs">
+            <button type="button" class="preview-tab active" id="tab-code-viewer">📄 Просмотр кода</button>
+            <button type="button" class="preview-tab" id="tab-web-render">🌐 Web / UI Live Render</button>
+            <button type="button" class="preview-tab" id="tab-live-terminal">💻 Live Console</button>
+            <button type="button" class="preview-tab" id="tab-witness-cert">🛡️ In-toto Attestation</button>
+          </div>
+
+          <!-- Tab 1: Code Viewer -->
+          <div id="view-code" class="preview-tab-pane">
+            <div class="code-viewer-bar">
+              <span id="view-file-name" class="active-file-label">PLAN.md</span>
+              <span id="view-file-size" class="active-file-size">1.2 KB</span>
+              <button type="button" id="btn-open-in-editor" class="mini-btn">💻 Открыть в редакторе</button>
+            </div>
+            <pre id="preview-code-block" class="preview-code-pre"><code id="preview-code-content"></code></pre>
+          </div>
+
+          <!-- Tab 2: Web / HTML Live Render -->
+          <div id="view-web" class="preview-tab-pane" hidden>
+            <div class="web-preview-bar">
+              <span class="web-preview-url">sandbox://localhost/preview</span>
+              <button type="button" id="btn-reload-web" class="mini-btn">🔄 Reload</button>
+            </div>
+            <iframe id="preview-iframe" class="preview-iframe" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
+          </div>
+
+          <!-- Tab 3: Live Terminal Console -->
+          <div id="view-terminal" class="preview-tab-pane" hidden>
+            <div class="terminal-bar">
+              <span class="terminal-title">🖥️ Execution Output & Sandbox Logs</span>
+              <span id="terminal-status" class="terminal-badge">IDLE</span>
+            </div>
+            <div id="preview-terminal-output" class="terminal-console">
+              <p class="terminal-line dim">Нажмите "▶ Run Live" или "🧪 Run Tests", чтобы запустить проект в песочнице...</p>
+            </div>
+          </div>
+
+          <!-- Tab 4: In-toto Witness Certificate -->
+          <div id="view-witness" class="preview-tab-pane" hidden>
+            <div class="witness-card">
+              <div class="witness-header">
+                <span class="witness-seal">🛡️</span>
+                <div>
+                  <h4>In-toto Witness v0.12 Supply Chain Attestation</h4>
+                  <p>Криптографическая верификация целостности артефактов (ED25519)</p>
+                </div>
+                <span class="status-verified-badge">VERIFIED PASS</span>
+              </div>
+              <div id="witness-details" class="witness-details">
+                <pre id="witness-json-pre"></pre>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

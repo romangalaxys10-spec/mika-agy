@@ -571,10 +571,19 @@ $("compose").addEventListener("submit", event => {
           if (st) st.textContent = "Done";
         });
         
+        if (res?.result?.workspace) currentPreviewWs = res.result.workspace;
         const arts = res?.result?.artifacts || [];
         if (arts.length && $("task-artifacts") && $("artifacts-list")) {
           $("task-artifacts").hidden = false;
           $("artifacts-list").replaceChildren();
+          
+          const prevBtn = element("button", "👁️ Live Preview Sandbox", "artifact-btn");
+          prevBtn.style.background = "linear-gradient(135deg, #2563eb, #7c3aed)";
+          prevBtn.style.color = "#fff";
+          prevBtn.style.fontWeight = "bold";
+          prevBtn.onclick = () => openProjectPreview(currentPreviewWs);
+          $("artifacts-list").append(prevBtn);
+
           for (const art of arts) {
             const icon = art.type === "markdown" ? "📑 " : art.type === "json" ? "🛡️ " : "💻 ";
             const artBtn = element("button", icon + art.name, "artifact-btn");
@@ -842,6 +851,181 @@ $("mcp-search-query")?.addEventListener("keydown", (e) => {
     searchMcpMarket(e.target.value.trim() || "topic:mcp-server");
   }
 });
+
+// =========================================================================
+// Project Live Preview Sandbox Logic (ZCode / Paseo / DeepSeek Harness)
+// =========================================================================
+let currentPreviewWs = "";
+let currentPreviewFile = "";
+const previewModal = $("project-preview-modal");
+
+$("btn-open-preview")?.addEventListener("click", () => openProjectPreview());
+$("btn-open-preview-main")?.addEventListener("click", () => openProjectPreview());
+$("btn-close-preview")?.addEventListener("click", () => {
+  if (previewModal) previewModal.hidden = true;
+});
+previewModal?.addEventListener("click", (e) => {
+  if (e.target === previewModal) previewModal.hidden = true;
+});
+
+$("tab-code-viewer")?.addEventListener("click", () => showPreviewTab("code"));
+$("tab-web-render")?.addEventListener("click", () => showPreviewTab("web"));
+$("tab-live-terminal")?.addEventListener("click", () => showPreviewTab("terminal"));
+$("tab-witness-cert")?.addEventListener("click", () => showPreviewTab("witness"));
+
+function showPreviewTab(tab) {
+  $("tab-code-viewer")?.classList.toggle("active", tab === "code");
+  $("tab-web-render")?.classList.toggle("active", tab === "web");
+  $("tab-live-terminal")?.classList.toggle("active", tab === "terminal");
+  $("tab-witness-cert")?.classList.toggle("active", tab === "witness");
+
+  if ($("view-code")) $("view-code").hidden = tab !== "code";
+  if ($("view-web")) $("view-web").hidden = tab !== "web";
+  if ($("view-terminal")) $("view-terminal").hidden = tab !== "terminal";
+  if ($("view-witness")) $("view-witness").hidden = tab !== "witness";
+}
+
+async function openProjectPreview(workspacePath) {
+  if (previewModal) previewModal.hidden = false;
+  showPreviewTab("code");
+  const treeContainer = $("preview-file-tree");
+  if (treeContainer) treeContainer.innerHTML = '<p class="hint">Загрузка структуры проекта...</p>';
+
+  try {
+    const res = await call("project_tree", {workspace: workspacePath || currentPreviewWs});
+    currentPreviewWs = res.workspace || "";
+    if ($("preview-workspace-pill")) $("preview-workspace-pill").textContent = currentPreviewWs;
+    if ($("preview-project-title")) $("preview-project-title").textContent = `🚀 Live Sandbox: ${currentPreviewWs.split("/").pop()}`;
+
+    const files = res.files || [];
+    if (!files.length) {
+      if (treeContainer) treeContainer.innerHTML = '<p class="hint">Файлы проекта не найдены.</p>';
+      return;
+    }
+
+    if (treeContainer) {
+      treeContainer.innerHTML = "";
+      files.forEach((f, idx) => {
+        const item = document.createElement("div");
+        item.className = "tree-file-item" + (idx === 0 ? " active" : "");
+        const icon = f.ext === ".py" ? "🐍 " : f.ext === ".md" ? "📑 " : f.ext === ".json" ? "🛡️ " : f.ext === ".html" ? "🌐 " : "📄 ";
+        const kb = (f.size / 1024).toFixed(1) + " KB";
+        item.innerHTML = `<span>${icon}${f.name}</span><span class="file-size">${kb}</span>`;
+        item.onclick = () => {
+          document.querySelectorAll(".tree-file-item").forEach(el => el.classList.remove("active"));
+          item.classList.add("active");
+          loadPreviewFile(f.path, f.name, kb, f.ext);
+        };
+        treeContainer.appendChild(item);
+      });
+    }
+
+    // Default open first important file (main.py, PLAN.md, or index 0)
+    const defFile = files.find(f => f.name === "PLAN.md") || files.find(f => f.name === "main.py") || files[0];
+    if (defFile) {
+      loadPreviewFile(defFile.path, defFile.name, (defFile.size / 1024).toFixed(1) + " KB", defFile.ext);
+    }
+  } catch (err) {
+    if (treeContainer) treeContainer.innerHTML = `<p class="hint">Ошибка чтения файлов: ${err.message || err}</p>`;
+  }
+}
+
+async function loadPreviewFile(filePath, fileName, fileSize, ext) {
+  currentPreviewFile = filePath;
+  if ($("view-file-name")) $("view-file-name").textContent = fileName;
+  if ($("view-file-size")) $("view-file-size").textContent = fileSize;
+  if ($("preview-code-content")) $("preview-code-content").textContent = "Загрузка содержимого...";
+
+  try {
+    const res = await call("project_read_file", {path: filePath});
+    const content = res.content || "";
+    if ($("preview-code-content")) $("preview-code-content").textContent = content;
+
+    // If HTML file, populate iframe
+    if (ext === ".html" && $("preview-iframe")) {
+      $("preview-iframe").srcdoc = content;
+      showPreviewTab("web");
+    }
+
+    // If attestation.json, populate witness tab
+    if (fileName === "attestation.json" && $("witness-json-pre")) {
+      try {
+        const parsed = JSON.parse(content);
+        $("witness-json-pre").textContent = JSON.stringify(parsed, null, 2);
+      } catch (_) {
+        $("witness-json-pre").textContent = content;
+      }
+    }
+  } catch (err) {
+    if ($("preview-code-content")) $("preview-code-content").textContent = "Ошибка чтения файла: " + (err.message || err);
+  }
+}
+
+$("btn-refresh-tree")?.addEventListener("click", () => openProjectPreview(currentPreviewWs));
+
+$("btn-run-live")?.addEventListener("click", async () => {
+  showPreviewTab("terminal");
+  const term = $("preview-terminal-output");
+  const badge = $("terminal-status");
+  if (badge) { badge.textContent = "RUNNING"; badge.style.color = "#38bdf8"; }
+  if (term) term.innerHTML = `<p class="terminal-line dim">🚀 Запуск: python3 main.py --action run ...</p>`;
+
+  try {
+    const res = await call("project_run", {workspace: currentPreviewWs, command: "main"});
+    if (badge) {
+      badge.textContent = res.exit_code === 0 ? "EXIT 0 (SUCCESS)" : `EXIT ${res.exit_code} (FAILED)`;
+      badge.style.color = res.exit_code === 0 ? "#10b981" : "#ef4444";
+    }
+    let out = `<p class="terminal-line dim">[CMD] ${res.command} (${res.duration}s)</p>\n`;
+    if (res.stdout) out += `<div class="terminal-stdout">${escapeHtml(res.stdout)}</div>`;
+    if (res.stderr) out += `<div class="terminal-stderr" style="color:#ef4444">${escapeHtml(res.stderr)}</div>`;
+    if (term) term.innerHTML = out;
+  } catch (err) {
+    if (badge) { badge.textContent = "ERROR"; badge.style.color = "#ef4444"; }
+    if (term) term.innerHTML = `<p class="terminal-line" style="color:#ef4444">Ошибка запуска: ${err.message || err}</p>`;
+  }
+});
+
+$("btn-run-tests")?.addEventListener("click", async () => {
+  showPreviewTab("terminal");
+  const term = $("preview-terminal-output");
+  const badge = $("terminal-status");
+  if (badge) { badge.textContent = "TESTING"; badge.style.color = "#a855f7"; }
+  if (term) term.innerHTML = `<p class="terminal-line dim">🧪 Запуск автоматических тестов: python3 -m unittest test_suite.py ...</p>`;
+
+  try {
+    const res = await call("project_run", {workspace: currentPreviewWs, command: "test"});
+    if (badge) {
+      badge.textContent = res.exit_code === 0 ? "100% PASSED" : `TESTS FAILED (EXIT ${res.exit_code})`;
+      badge.style.color = res.exit_code === 0 ? "#10b981" : "#ef4444";
+    }
+    let out = `<p class="terminal-line dim">[CMD] ${res.command} (${res.duration}s)</p>\n`;
+    if (res.stdout) out += `<div class="terminal-stdout">${escapeHtml(res.stdout)}</div>`;
+    if (res.stderr) out += `<div class="terminal-stderr" style="color:${res.exit_code === 0 ? '#10b981' : '#ef4444'}">${escapeHtml(res.stderr)}</div>`;
+    if (term) term.innerHTML = out;
+  } catch (err) {
+    if (badge) { badge.textContent = "ERROR"; badge.style.color = "#ef4444"; }
+    if (term) term.innerHTML = `<p class="terminal-line" style="color:#ef4444">Ошибка тестирования: ${err.message || err}</p>`;
+  }
+});
+
+$("btn-reveal-finder")?.addEventListener("click", async () => {
+  if (currentPreviewWs) {
+    await call("open_file", {path: currentPreviewWs});
+    message("notice", "Opened project folder in macOS Finder!");
+  }
+});
+
+$("btn-open-in-editor")?.addEventListener("click", async () => {
+  if (currentPreviewFile) {
+    await call("open_file", {path: currentPreviewFile});
+    message("notice", "Opened file in macOS default editor!");
+  }
+});
+
+function escapeHtml(str) {
+  return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 render();
 scheduleUpdate(true);
