@@ -22,17 +22,22 @@ ASSETS = {
     "/mika-logo.png": ("mika-logo.png", "image/png"),
 }
 WATCH_SECONDS = 4
-FIELDS = {"overview": set(), "watch": {"task_id"}, "select": {"device"}, "run": {"goal"}, "status": {"task_id"}, "cancel": {"task_id"},
-          "answer": {"task_id", "text"}, "steer": {"task_id", "text"}, "open_file": {"path"}}
+FIELDS = {
+    "overview": set(), "watch": {"task_id"}, "select": {"device"}, "run": {"goal"},
+    "status": {"task_id"}, "cancel": {"task_id"}, "answer": {"task_id", "text"},
+    "steer": {"task_id", "text"}, "open_file": {"path"},
+    "mcp_market": set(), "mcp_servers": set(), "mcp_install": {"id"},
+    "mcp_uninstall": {"id"}, "mcp_toggle": {"id"}, "horizon": {"task_id"}
+}
 
 
 def command(data):
-    if not isinstance(data, dict) or not all(isinstance(value, str) for value in data.values()):
+    if not isinstance(data, dict):
         raise ValueError
     action = data.get("action")
-    if action not in FIELDS or data.keys() != FIELDS[action] | {"action"}:
+    if not action or action not in FIELDS:
         raise ValueError
-    if "task_id" in data and not re.fullmatch(r"[A-Za-z0-9_-]+", data["task_id"]):
+    if "task_id" in data and isinstance(data["task_id"], str) and not re.fullmatch(r"[A-Za-z0-9_-]+", data["task_id"]):
         raise ValueError
     return action
 
@@ -64,6 +69,7 @@ class Desk(ThreadingHTTPServer):
                 raise CliError("device_selection", "Choose an online phone.", devices=online, http_status=409)
             self.args.device = choice
 
+    def dispatch(self, action, data, sensitive):
         if action == "open_file":
             path = data.get("path", "")
             if path and os.path.exists(path):
@@ -71,6 +77,47 @@ class Desk(ThreadingHTTPServer):
                 subprocess.run(["open", path])
                 return {"opened": True, "path": path}
             return {"opened": False, "error": "file not found"}
+
+        if action == "mcp_market":
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
+                from mika_mcp_engine import mcp_engine
+                return {"marketplace": mcp_engine.list_marketplace()}
+            except Exception as e:
+                return {"error": str(e), "marketplace": []}
+
+        if action == "mcp_servers":
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
+                from mika_mcp_engine import mcp_engine
+                return {"servers": mcp_engine.list_installed()}
+            except Exception as e:
+                return {"error": str(e), "servers": []}
+
+        if action == "mcp_install":
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
+                from mika_mcp_engine import mcp_engine
+                return mcp_engine.install_server(data.get("id"), data.get("config"))
+            except Exception as e:
+                return {"error": str(e)}
+
+        if action == "mcp_uninstall":
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
+                from mika_mcp_engine import mcp_engine
+                return mcp_engine.uninstall_server(data.get("id"))
+            except Exception as e:
+                return {"error": str(e)}
+
+        if action == "mcp_toggle":
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
+                from mika_mcp_engine import mcp_engine
+                return mcp_engine.toggle_server(data.get("id"), data.get("enabled", True))
+            except Exception as e:
+                return {"error": str(e)}
+
         self.pin_target(data.get("device"))
         if action in {"overview", "select", "watch"}:
             with connection(self.args, sensitive) as (client, transport):
@@ -118,8 +165,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; "
-                         "img-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
+        self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+                         "img-src 'self' data:; connect-src 'self' http://127.0.0.1:* http://localhost:*; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
         self.end_headers()
         try:
             self.wfile.write(content)

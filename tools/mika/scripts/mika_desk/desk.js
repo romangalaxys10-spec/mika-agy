@@ -612,7 +612,12 @@ async function loadMcpMarket() {
   const grid = $("mcp-market-grid");
   if (!grid) return;
   try {
-    const res = await fetch("http://127.0.0.1:8765/api/v1/mcp/market").then(r => r.json());
+    let res;
+    try {
+      res = await call("mcp_market");
+    } catch (_) {
+      res = await fetch("http://127.0.0.1:8765/api/v1/mcp/market").then(r => r.json());
+    }
     grid.innerHTML = "";
     (res.marketplace || []).forEach(srv => {
       const card = document.createElement("div");
@@ -633,12 +638,16 @@ async function loadMcpMarket() {
         </div>
       `;
       card.querySelector("button").onclick = async () => {
-        const action = srv.installed ? "uninstall" : "install";
-        await fetch(`http://127.0.0.1:8765/api/v1/mcp/${action}`, {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({id: srv.id})
-        });
+        const action = srv.installed ? "mcp_uninstall" : "mcp_install";
+        try {
+          await call(action, {id: srv.id});
+        } catch (_) {
+          await fetch(`http://127.0.0.1:8765/api/v1/mcp/${srv.installed ? 'uninstall' : 'install'}`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({id: srv.id})
+          });
+        }
         loadMcpMarket();
         updateMcpBadge();
       };
@@ -653,7 +662,12 @@ async function loadMcpInstalled() {
   const grid = $("mcp-installed-grid");
   if (!grid) return;
   try {
-    const res = await fetch("http://127.0.0.1:8765/api/v1/mcp/servers").then(r => r.json());
+    let res;
+    try {
+      res = await call("mcp_servers");
+    } catch (_) {
+      res = await fetch("http://127.0.0.1:8765/api/v1/mcp/servers").then(r => r.json());
+    }
     grid.innerHTML = "";
     const list = res.servers || [];
     if (!list.length) {
@@ -677,11 +691,15 @@ async function loadMcpInstalled() {
         </div>
       `;
       card.querySelector("button").onclick = async () => {
-        await fetch("http://127.0.0.1:8765/api/v1/mcp/uninstall", {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({id: srv.id})
-        });
+        try {
+          await call("mcp_uninstall", {id: srv.id});
+        } catch (_) {
+          await fetch("http://127.0.0.1:8765/api/v1/mcp/uninstall", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({id: srv.id})
+          });
+        }
         loadMcpInstalled();
         updateMcpBadge();
       };
@@ -694,7 +712,12 @@ async function loadMcpInstalled() {
 
 async function updateMcpBadge() {
   try {
-    const res = await fetch("http://127.0.0.1:8765/api/v1/mcp/servers").then(r => r.json());
+    let res;
+    try {
+      res = await call("mcp_servers");
+    } catch (_) {
+      res = await fetch("http://127.0.0.1:8765/api/v1/mcp/servers").then(r => r.json());
+    }
     const count = (res.servers || []).filter(s => s.enabled).length;
     if ($("mcp-active-count")) $("mcp-active-count").textContent = `${count} active`;
   } catch (_) {}
@@ -711,11 +734,15 @@ $("mcp-manual-form")?.addEventListener("submit", async (e) => {
     if (envStr) env = JSON.parse(envStr);
   } catch (_) {}
 
-  await fetch("http://127.0.0.1:8765/api/v1/mcp/install", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({id, config: {name: id, url, command: cmd, env}})
-  });
+  try {
+    await call("mcp_install", {id, config: {name: id, url, command: cmd, env}});
+  } catch (_) {
+    await fetch("http://127.0.0.1:8765/api/v1/mcp/install", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({id, config: {name: id, url, command: cmd, env}})
+    });
+  }
   message("notice", `MCP server '${id}' installed successfully!`);
   showMcpTab("installed");
   updateMcpBadge();
