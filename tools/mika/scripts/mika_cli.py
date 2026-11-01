@@ -101,6 +101,18 @@ class Client:
                 exc.close()
             raise CliError(code, message, 1, http_status=exc.code) from None
         except (urllib.error.URLError, OSError, http.client.HTTPException, ValueError):
+            if not mutation and ("127.0.0.1" in self.base or "localhost" in self.base):
+                import time
+                time.sleep(0.08)
+                try:
+                    with self.opener.open(req, timeout=timeout or self.timeout) as response:
+                        raw = response.read(MAX_RESPONSE + 1)
+                        if len(raw) <= MAX_RESPONSE and response.headers.get_content_type() == "application/json":
+                            result = json.loads(raw)
+                            if isinstance(result, dict) and "error" not in result:
+                                return result
+                except Exception:
+                    pass
             if mutation:
                 self.unknown(task_id)
             raise CliError("connection", "Could not read a valid response from Mika; check the connection and run mika connect.") from None
@@ -189,7 +201,7 @@ def connection(args, secrets):
         except (OSError, UnicodeError):
             raise CliError("credentials", "Could not read the token file.") from None
         secrets.append(token)
-        yield Client(base, token, args.request_timeout), {"transport": "http"}
+        yield Client(base, token, getattr(args, "request_timeout", 15)), {"transport": "http"}
         return
     if args.token_file:
         raise CliError("arguments", "--token-file requires --url; ADB reads the current token from the phone.")

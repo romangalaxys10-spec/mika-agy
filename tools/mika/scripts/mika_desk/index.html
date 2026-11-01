@@ -13,18 +13,18 @@
   <header class="bar"><div class="wrap brand"><strong><img src="/mika-logo.png" width="36" height="36" alt="">Mika</strong><span data-i18n="workspace">Personal workspace</span></div></header>
   <main class="wrap">
     <div class="heading">
-      <div><h1 data-i18n="heading">Task desk</h1><p data-i18n="intro">Hand tasks to your phone, follow their progress and answer its questions.</p></div>
+      <div><h1 data-i18n="heading">Task desk</h1><p data-i18n="intro">Hand tasks to Mika Agent on macOS, follow progress and inspect deliverables.</p></div>
       <div class="refresh"><small id="updated" data-i18n="autoUpdate">Updates automatically</small><button id="refresh" type="button" data-i18n="refreshNow">Update now</button></div>
     </div>
     <details id="connection-details" class="connection-card">
-      <summary><span id="connection-line" data-i18n="connectingPhone">Connecting to the phone</span><span class="disclosure-label" data-i18n="connectionDetails">Connection details</span></summary>
+      <summary><span id="connection-line" data-i18n="connectingPhone">Connecting to Mika Agent</span><span class="disclosure-label" data-i18n="connectionDetails">Connection details</span></summary>
       <form id="pick" class="picker" hidden>
-        <label for="devices" data-i18n="deviceForSession">Phone for this session</label><select id="devices"></select><button id="pick-device" data-i18n="chooseDevice">Choose phone</button>
+        <label for="devices" data-i18n="deviceForSession">Agent for this session</label><select id="devices"></select><button id="pick-device" data-i18n="chooseDevice">Choose agent</button>
       </form>
-      <div class="device" data-i18n-label="deviceStatus" aria-label="Phone status">
-        <div><span class="caption" data-i18n="connectedPhone">Phone</span><b id="target" data-i18n="waitingToRead">Not read yet</b></div>
+      <div class="device" data-i18n-label="deviceStatus" aria-label="Agent status">
+        <div><span class="caption" data-i18n="connectedPhone">Agent</span><b id="target" data-i18n="waitingToRead">Not read yet</b></div>
         <div><span class="caption" data-i18n="taskService">Task service</span><b id="connection" data-i18n="connecting">Connecting</b></div>
-        <div><span class="caption" data-i18n="phoneState">Phone state</span><b id="device" data-i18n="unknown">Unknown</b></div>
+        <div><span class="caption" data-i18n="phoneState">Agent state</span><b id="device" data-i18n="unknown">Unknown</b></div>
         <div><span class="caption" data-i18n="modelSetup">Model setup</span><b data-i18n="unverified">Not verified</b></div>
       </div>
     </details>
@@ -43,7 +43,7 @@
         <button type="button" class="preset-btn" data-goal="Проведи полный аудит кода, тесты самоисцеления QA и аттестацию Witness" style="border-color: #a855f7; color: #a855f7;">🧪 Coder Team: Архитектурный аудит & QA</button>
       </div>
       <div class="input-row"><textarea id="goal" rows="2" maxlength="4000" data-i18n-placeholder="goalPlaceholder" placeholder="Describe the task. Enter sends, Shift+Enter adds a line" required></textarea>
-        <button class="primary" id="submit-goal" disabled data-i18n="submitGoal">Send to phone</button></div>
+        <button class="primary" id="submit-goal" disabled data-i18n="submitGoal">Dispatch task</button></div>
       <div class="composer-controls">
         <label class="coder-toggle" title="Autonomous Multi-Agent Coder Team (Plan, Design, Code, QA, Review, Deliver)"><input type="checkbox" id="chk-coder-team" checked> 🧑‍💻 <span>Coder Team Mode</span></label>
         <label class="horizon-toggle" title="AutoAgent & Hermes multi-step milestone autonomous execution"><input type="checkbox" id="chk-long-horizon" checked> ⚡ <span>Long Horizon Mode</span></label>
@@ -59,7 +59,7 @@
       <section class="panel detail" aria-labelledby="detail-title">
         <div class="section-head"><h2 id="detail-title" data-i18n="taskDetail">Task details</h2><span id="status" class="badge" hidden></span></div>
         <div id="facts">
-          <p id="detail-empty" class="empty" data-i18n="detailEmpty">Pick a task to see the progress or result the phone reports.</p>
+          <p id="detail-empty" class="empty" data-i18n="detailEmpty">Pick a task to see the progress, live board and deliverables.</p>
           <div id="task-now" hidden>
             <strong id="task-step" hidden></strong>
             <p id="task-message"></p>

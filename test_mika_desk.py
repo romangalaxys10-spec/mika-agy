@@ -29,7 +29,7 @@ def run_qa():
     print("🐾 Running Full Proper QA on Mika Desk & MCP...")
     args = argparse.Namespace(
         url="http://127.0.0.1:8765",
-        device="local-agent",
+        device=None,
         token_file=str(Path.home() / ".mika" / "token"),
         adb="adb",
         no_open=True
@@ -60,6 +60,16 @@ def run_qa():
         assert resp.status == 200
         assert "connect-src" in csp
         print(f"✅ GET /desk.js: 200 OK (CSP: {csp[:50]}...)")
+
+    # 1b. Test POST /desk (overview)
+    post_data = json.dumps({"action": "overview"}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert "tasks" in data
+        assert "capabilities" in data
+        assert data.get("target") == "Mika macOS Host"
+        print(f"✅ POST /desk (overview): 200 OK — Target: '{data['target']}', Active Tasks: {len(data['tasks'])}")
 
     # 2. Test POST /desk (mcp_market)
     post_data = json.dumps({"action": "mcp_market"}).encode("utf-8")

@@ -903,6 +903,7 @@ class MikaAgentServer:
 
 class RequestHandler(http.server.BaseHTTPRequestHandler):
     server: "MikaHttpServer"
+    timeout = 60
 
     def log_message(self, *args):
         pass
@@ -1242,6 +1243,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
 
 class MikaHttpServer(http.server.ThreadingHTTPServer):
+    daemon_threads = True
     def __init__(self, agent_server: MikaAgentServer, host: str, port: int):
         super().__init__((host, port), RequestHandler)
         self.agent_server = agent_server

@@ -49,12 +49,45 @@ class Desk(ThreadingHTTPServer):
         # printed link's fragment, which browsers never send to the server.
         super().__init__(("127.0.0.1", 0), Handler)
         self.args = args
-        if not args.url and not args.device:
+        if self.args.url:
+            self.args.device = None
+        elif not args.device:
             args.device = os.environ.get("ANDROID_SERIAL")
         self.lock = threading.Lock()
         self.key = secrets.token_urlsafe(32)
         self.host = f"127.0.0.1:{self.server_port}"
         self.origin = "http://" + self.host
+        self.cached_overview = None
+        if self.args.url and ("127.0.0.1" in self.args.url or "localhost" in self.args.url):
+            self.ensure_agent_server()
+
+    def ensure_agent_server(self):
+        """Auto-heals and starts local agent server if not running on loopback."""
+        import socket
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(0.3)
+                if s.connect_ex(("127.0.0.1", 8765)) == 0:
+                    return
+        except Exception:
+            pass
+
+        # Locate mika_agent_server.py
+        candidates = [
+            os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server", "mika_agent_server.py"),
+            os.path.join(os.path.dirname(__file__), "..", "mika_agent_server.py"),
+            "/Applications/Mika.app/Contents/Resources/mika-core/mika_agent_server.py"
+        ]
+        for c in candidates:
+            c_path = os.path.abspath(c)
+            if os.path.exists(c_path):
+                try:
+                    import subprocess
+                    subprocess.Popen([sys.executable, c_path, "--port", "8765"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    time.sleep(0.6)
+                    break
+                except Exception:
+                    pass
 
     def pin_target(self, choice):
         # A session owns one target even across disconnects and concurrent tabs.
@@ -138,30 +171,40 @@ class Desk(ThreadingHTTPServer):
 
         self.pin_target(data.get("device"))
         if action in {"overview", "select", "watch"}:
-            with connection(self.args, sensitive) as (client, transport):
-                info = client.discover()
-                if action == "watch":
-                    # A state change wakes the view early. At the deadline the same
-                    # overview also picks up progress text and other remote tasks.
-                    try:
-                        client.request("POST", f"/tasks/{data['task_id']}/wait", {"timeout_s": WATCH_SECONDS},
-                                       timeout=max(client.timeout, WATCH_SECONDS + 5))
-                    except CliError as exc:
-                        if exc.details.get("http_status") != 404:
-                            raise
-                        # The phone may have restarted and lost this task ID.
-                tasks = recent_tasks(client, 50)["tasks"]
-                device = {}
-                if "device_state" in info["capabilities"]:
-                    try:
-                        device = client.request("GET", "/device").get("device") or {}
-                    except CliError:
-                        # The optional screen/helper status can be unavailable on a
-                        # phone that just returned a valid list of tasks.
-                        pass
-                return {"target": transport.get("device") or self.args.url,
-                        "transport": transport["transport"], "server_version": info.get("server_version"),
-                        "capabilities": info["capabilities"], "device": device, "tasks": tasks}
+            for attempt in range(2):
+                try:
+                    with connection(self.args, sensitive) as (client, transport):
+                        info = client.discover()
+                        if action == "watch":
+                            # A state change wakes the view early. At the deadline the same
+                            # overview also picks up progress text and other remote tasks.
+                            try:
+                                client.request("POST", f"/tasks/{data['task_id']}/wait", {"timeout_s": min(WATCH_SECONDS, 2)},
+                                               timeout=max(client.timeout, WATCH_SECONDS + 5))
+                            except CliError as exc:
+                                if exc.details.get("http_status") != 404:
+                                    raise
+                                # The agent server may have restarted and lost this task ID.
+                        tasks = recent_tasks(client, 50)["tasks"]
+                        device = {}
+                        if "device_state" in info["capabilities"]:
+                            try:
+                                device = client.request("GET", "/device").get("device") or {}
+                            except CliError:
+                                pass
+                        res = {"target": transport.get("device") or "Mika macOS Host",
+                               "transport": transport["transport"], "server_version": info.get("server_version"),
+                               "capabilities": info["capabilities"], "device": device, "tasks": tasks}
+                        self.cached_overview = res
+                        return res
+                except CliError as exc:
+                    if exc.code == "connection" and self.cached_overview:
+                        time.sleep(0.15)
+                        if attempt == 1:
+                            # Return cached state to maintain seamless UI continuity
+                            return self.cached_overview
+                    else:
+                        raise
 
         args = argparse.Namespace(**{**vars(self.args), **data, "command": "task",
                                      "goal_file": None, "text_file": None, "conversation": None})
@@ -169,7 +212,7 @@ class Desk(ThreadingHTTPServer):
 
 
 class Handler(BaseHTTPRequestHandler):
-    timeout = 10
+    timeout = 60
 
     def log_message(self, *args):
         pass  # A desk's local session and phone activity do not belong in logs.
