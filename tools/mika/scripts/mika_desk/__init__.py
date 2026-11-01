@@ -36,7 +36,16 @@ FIELDS = {
     "dsh_overview": set(), "dsh_pause": {"paused"}, "dsh_tickets": {"stage"},
     "dsh_ticket_retry": {"ticket_id"}, "dsh_ticket_answer": {"ticket_id", "answer"}, "dsh_ticket_approve": {"ticket_id"},
     "dsh_triggers": {"filter"}, "dsh_requeue": {"trigger_id"}, "dsh_evals": set(),
-    "dsh_prompts": set(), "dsh_save_prompt": {"section", "text"}
+    "dsh_prompts": set(), "dsh_save_prompt": {"section", "text"},
+    "vibe_chat": {"prompt", "mode", "model", "context", "workspace"},
+    "vibe_accept_diff": {"file_path", "workspace"},
+    "vibe_accept_all": {"workspace"},
+    "vibe_reject_diff": {"file_path"},
+    "vibe_context_files": {"workspace"},
+    "vibe_history": {"workspace"},
+    "vibe_enhance_prompt": {"prompt"},
+    "vibebox_status": set(),
+    "vibebox_run": {"command", "workspace"}
 }
 
 
@@ -213,6 +222,67 @@ class Desk(ThreadingHTTPServer):
             except Exception as e:
                 return {"status": "error", "error": str(e)}
 
+        # Cursor-like Vibe Coding Agent Endpoints
+        if action == "vibe_enhance_prompt":
+            try:
+                from mika_vibe_agent import vibe_agent
+                return vibe_agent.enhance_prompt(data.get("prompt", ""))
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "vibe_chat":
+            try:
+                from mika_vibe_agent import vibe_agent
+                return vibe_agent.chat_turn(
+                    prompt=data.get("prompt", ""),
+                    mode=data.get("mode", "vibe"),
+                    model=data.get("model", "deepseek-r1"),
+                    context_files=data.get("context", []),
+                    workspace=data.get("workspace"),
+                    auto_enhanced=data.get("auto_enhanced", False)
+                )
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "vibe_accept_diff":
+            try:
+                from mika_vibe_agent import vibe_agent
+                return vibe_agent.accept_diff(data.get("file_path", ""), data.get("workspace"))
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "vibe_accept_all":
+            try:
+                from mika_vibe_agent import vibe_agent
+                return vibe_agent.accept_all(data.get("workspace"))
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "vibe_reject_diff":
+            try:
+                from mika_vibe_agent import vibe_agent
+                return vibe_agent.reject_diff(data.get("file_path", ""))
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "vibe_context_files":
+            try:
+                from mika_vibe_agent import vibe_agent
+                return {"status": "ok", "files": vibe_agent.get_context_files(data.get("workspace"))}
+            except Exception as e:
+                return {"status": "error", "error": str(e), "files": []}
+
+        if action == "vibe_history":
+            try:
+                from mika_vibe_agent import vibe_agent
+                return {
+                    "status": "ok",
+                    "conversations": vibe_agent.state.get("conversations", []),
+                    "diffs": list(vibe_agent.state.get("current_diffs", {}).values())
+                }
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
         # MCP Engine Endpoints
         if action == "mcp_market":
             try:
@@ -330,37 +400,51 @@ class Desk(ThreadingHTTPServer):
                     return {"error": str(e)}
             return {"error": "file not found"}
 
+        if action == "vibebox_status":
+            try:
+                from mika_vibebox import vibebox_engine
+                return vibebox_engine.get_status()
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "vibebox_run":
+            try:
+                from mika_vibebox import vibebox_engine
+                cmd = data.get("command", "")
+                if isinstance(cmd, str):
+                    import shlex
+                    cmd_list = shlex.split(cmd)
+                else:
+                    cmd_list = cmd
+                return vibebox_engine.run_isolated(cmd_list, data.get("workspace", "/tmp"))
+            except Exception as e:
+                return {"status": "error", "error": str(e), "exit_code": -1}
+
         if action == "project_run":
             ws_path = data.get("workspace")
             if not ws_path or not os.path.exists(ws_path):
                 return {"stdout": "", "stderr": "No project workspace found. Please select an active project with files.", "exit_code": 1, "duration": 0, "command": ""}
             p = Path(ws_path).resolve()
             cmd_type = data.get("command", "main")
-            import subprocess
             exec_cmd = [sys.executable, "-m", "unittest", "test_suite.py"] if cmd_type == "test" else [sys.executable, "main.py", "--action", "run"]
-            start_t = time.time()
             try:
-                proc = subprocess.run(
-                    exec_cmd,
-                    cwd=str(p),
-                    capture_output=True,
-                    text=True,
-                    timeout=20
-                )
-                duration = round(time.time() - start_t, 3)
+                from mika_vibebox import vibebox_engine
+                res = vibebox_engine.run_isolated(exec_cmd, str(p), timeout=25)
                 return {
-                    "stdout": proc.stdout,
-                    "stderr": proc.stderr,
-                    "exit_code": proc.returncode,
-                    "duration": duration,
-                    "command": " ".join(exec_cmd)
+                    "stdout": res.get("stdout", ""),
+                    "stderr": res.get("stderr", ""),
+                    "exit_code": res.get("exit_code", 0),
+                    "duration": res.get("duration", 0),
+                    "command": " ".join(exec_cmd),
+                    "sandboxed": res.get("sandboxed", True),
+                    "sandbox_type": res.get("sandbox_type", "seatbelt")
                 }
             except Exception as e:
                 return {
                     "stdout": "",
                     "stderr": str(e),
                     "exit_code": -1,
-                    "duration": round(time.time() - start_t, 3),
+                    "duration": 0,
                     "command": " ".join(exec_cmd)
                 }
 

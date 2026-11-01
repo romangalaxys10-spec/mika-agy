@@ -1906,10 +1906,15 @@ document.querySelectorAll(".welcome-card").forEach(card => {
 // =========================================================================
 
 function switchDshView(viewName) {
-  const isTasks = viewName === "tasks";
-  if ($("compose")) $("compose").hidden = !isTasks;
+  const isVibe = (viewName === "vibe-coding");
+  const isTasks = (viewName === "tasks");
+  const isOverview = (viewName === "overview");
+
+  if ($("view-vibe-coding")) $("view-vibe-coding").hidden = !isVibe;
+  if ($("compose")) $("compose").hidden = !isTasks && !isOverview;
   const cols = document.querySelector(".columns");
-  if (cols) cols.hidden = !isTasks;
+  if (cols) cols.hidden = !isTasks && !isOverview;
+  if ($("dsh-super-banner")) $("dsh-super-banner").hidden = !isOverview && !isTasks;
 
   const panels = {
     triggers: $("dsh-triggers-panel"),
@@ -1925,6 +1930,7 @@ function switchDshView(viewName) {
   if (viewName === "evals") loadDshEvals();
   if (viewName === "execution") loadDshTickets("all");
   if (viewName === "prompts") loadDshPrompts();
+  if (viewName === "overview") loadDshOverview();
 }
 
 async function loadDshOverview() {
@@ -2249,6 +2255,32 @@ $("nav-dsh-execution")?.addEventListener("click", () => {
   switchDshView("execution");
 });
 
+// Tab navigation bindings
+$("nav-vibe-coding")?.addEventListener("click", () => {
+  setActiveNav("nav-vibe-coding");
+  switchDshView("vibe-coding");
+});
+
+$("nav-dsh-overview")?.addEventListener("click", () => {
+  setActiveNav("nav-dsh-overview");
+  switchDshView("overview");
+});
+
+$("nav-dsh-triggers")?.addEventListener("click", () => {
+  setActiveNav("nav-dsh-triggers");
+  switchDshView("triggers");
+});
+
+$("nav-dsh-evals")?.addEventListener("click", () => {
+  setActiveNav("nav-dsh-evals");
+  switchDshView("evals");
+});
+
+$("nav-dsh-execution")?.addEventListener("click", () => {
+  setActiveNav("nav-dsh-execution");
+  switchDshView("execution");
+});
+
 $("nav-dsh-prompts")?.addEventListener("click", () => {
   setActiveNav("nav-dsh-prompts");
   switchDshView("prompts");
@@ -2259,25 +2291,363 @@ $("nav-tasks")?.addEventListener("click", () => {
   switchDshView("tasks");
 });
 
-// Trigger & Ticket filter buttons
-document.querySelectorAll(".dsh-trig-filter").forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll(".dsh-trig-filter").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    loadDshTriggers(btn.dataset.filter || "all");
-  };
-});
+// =========================================================================
+// Cursor Vibe Coding & Auto Prompt Enhancer (Anti-AI-UI & OpenIntelligentUI)
+// =========================================================================
 
-document.querySelectorAll(".dsh-ticket-filter").forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll(".dsh-ticket-filter").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    loadDshTickets(btn.dataset.stage || "all");
-  };
-});
+let currentVibeMode = "agent";
+let currentVibeModel = "deepseek-r1";
+let lastRawPrompt = "";
+let lastEnhancedPrompt = "";
+
+function initVibeCoding() {
+  document.querySelectorAll(".vibe-mode-pill").forEach(pill => {
+    pill.addEventListener("click", () => {
+      document.querySelectorAll(".vibe-mode-pill").forEach(p => p.classList.remove("active"));
+      pill.classList.add("active");
+      currentVibeMode = pill.dataset.mode || "agent";
+    });
+  });
+
+  const modelSelect = $("vibe-model-select");
+  if (modelSelect) {
+    modelSelect.addEventListener("change", (e) => {
+      currentVibeModel = e.target.value;
+    });
+  }
+
+  $("btn-enhance-prompt-action")?.addEventListener("click", async () => {
+    const input = $("vibe-prompt-input");
+    if (!input || !input.value.trim()) {
+      message("warn", "Please enter a prompt idea first to enhance! ✨");
+      return;
+    }
+    lastRawPrompt = input.value;
+    $("btn-enhance-prompt-action").textContent = "⚡ Enhancing...";
+    $("btn-enhance-prompt-action").disabled = true;
+    try {
+      const res = await call("vibe_enhance_prompt", {prompt: lastRawPrompt});
+      if (res && res.status === "ok" && res.enhanced_prompt) {
+        lastEnhancedPrompt = res.enhanced_prompt;
+        input.value = res.enhanced_prompt;
+        input.style.height = "auto";
+        input.style.height = Math.min(180, input.scrollHeight) + "px";
+        if ($("vibe-enhanced-preview-banner")) $("vibe-enhanced-preview-banner").hidden = false;
+        message("notice", "⚡ Prompt upgraded to Full Project Grade specification! (Anti-AI-UI compliant)");
+      }
+    } catch (err) {
+      message("error", `Enhance error: ${err.message || err}`);
+    } finally {
+      $("btn-enhance-prompt-action").textContent = "⚡ Enhance";
+      $("btn-enhance-prompt-action").disabled = false;
+    }
+  });
+
+  $("btn-revert-enhanced")?.addEventListener("click", () => {
+    const input = $("vibe-prompt-input");
+    if (input && lastRawPrompt) {
+      input.value = lastRawPrompt;
+      input.style.height = "auto";
+      if ($("vibe-enhanced-preview-banner")) $("vibe-enhanced-preview-banner").hidden = true;
+    }
+  });
+
+  document.querySelectorAll(".vibe-preset-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const p = btn.dataset.vibe;
+      if (p && $("vibe-prompt-input")) {
+        $("vibe-prompt-input").value = p;
+        $("vibe-prompt-input").focus();
+        sendVibeMessage();
+      }
+    });
+  });
+
+  document.querySelectorAll(".context-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const input = $("vibe-prompt-input");
+      if (input) {
+        const tag = chip.dataset.ctx;
+        input.value = input.value ? `${input.value} ${tag} ` : `${tag} `;
+        input.focus();
+      }
+    });
+  });
+
+  $("btn-vibe-clear")?.addEventListener("click", () => {
+    const stream = $("vibe-chat-stream");
+    if (stream) {
+      stream.innerHTML = '<p class="hint" style="text-align:center; padding:20px;">Chat history cleared. Ready for new vibe coding session! 🐱🐾</p>';
+    }
+  });
+
+  $("btn-vibe-send")?.addEventListener("click", sendVibeMessage);
+  $("vibe-prompt-input")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendVibeMessage();
+    }
+  });
+
+  const canvasTabs = [
+    { tab: "tab-canvas-preview", view: "canvas-view-preview" },
+    { tab: "tab-canvas-diff", view: "canvas-view-diff" },
+    { tab: "tab-canvas-terminal", view: "canvas-view-terminal" }
+  ];
+  canvasTabs.forEach(({tab, view}) => {
+    $(tab)?.addEventListener("click", () => {
+      canvasTabs.forEach(({tab: t, view: v}) => {
+        $(t)?.classList.remove("active");
+        if ($(v)) $(v).hidden = true;
+      });
+      $(tab)?.classList.add("active");
+      if ($(view)) $(view).hidden = false;
+    });
+  });
+
+  $("vibe-dev-desktop")?.addEventListener("click", () => {
+    $("vibe-dev-desktop")?.classList.add("active");
+    $("vibe-dev-mobile")?.classList.remove("active");
+    const frame = $("vibe-canvas-iframe");
+    if (frame) {
+      frame.style.maxWidth = "100%";
+      frame.style.margin = "0";
+      frame.style.border = "0";
+    }
+  });
+
+  $("vibe-dev-mobile")?.addEventListener("click", () => {
+    $("vibe-dev-mobile")?.classList.add("active");
+    $("vibe-dev-desktop")?.classList.remove("active");
+    const frame = $("vibe-canvas-iframe");
+    if (frame) {
+      frame.style.maxWidth = "390px";
+      frame.style.margin = "12px auto";
+      frame.style.border = "4px solid #1e293b";
+      frame.style.borderRadius = "24px";
+      frame.style.boxShadow = "0 10px 30px rgba(0,0,0,0.5)";
+    }
+  });
+
+  $("vibe-btn-reload-canvas")?.addEventListener("click", () => {
+    const frame = $("vibe-canvas-iframe");
+    if (frame && frame.srcdoc) {
+      const src = frame.srcdoc;
+      frame.srcdoc = "";
+      setTimeout(() => frame.srcdoc = src, 100);
+    }
+  });
+
+  $("vibe-btn-open-browser")?.addEventListener("click", async () => {
+    try {
+      const res = await call("open_file", {path: currentInlineHtmlPath || ""});
+      if (!res.opened) {
+        message("notice", "Generated web page is live inside the Intelligent Canvas!");
+      }
+    } catch (_) {}
+  });
+
+  $("canvas-btn-accept-all")?.addEventListener("click", async () => {
+    try {
+      const res = await call("vibe_accept_all");
+      message("notice", `✨ Accepted & applied all ${res.count || 1} file changes to disk!`);
+      document.querySelectorAll(".btn-diff-action.accept").forEach(btn => {
+        btn.textContent = "Applied ✨";
+        btn.disabled = true;
+      });
+    } catch (err) {
+      message("error", `Error: ${err.message || err}`);
+    }
+  });
+
+  $("canvas-btn-reject-all")?.addEventListener("click", () => {
+    message("notice", "Pending diffs rejected.");
+    const container = $("canvas-diff-container");
+    if (container) container.innerHTML = '<p class="hint">Diffs discarded.</p>';
+  });
+}
+
+async function sendVibeMessage() {
+  const input = $("vibe-prompt-input");
+  if (!input) return;
+  const promptText = input.value.trim();
+  if (!promptText) return;
+
+  const isAutoEnhance = $("chk-auto-enhance")?.checked ?? true;
+
+  const stream = $("vibe-chat-stream");
+  const userCard = document.createElement("div");
+  userCard.className = "vibe-user-bubble";
+  userCard.innerHTML = `
+    <div class="vibe-user-meta">
+      <strong>Катенька 👤</strong>
+      <span>${new Date().toLocaleTimeString()}</span>
+    </div>
+    <div style="white-space:pre-wrap;">${escapeHtml(promptText)}</div>
+  `;
+  stream.appendChild(userCard);
+  input.value = "";
+  input.style.height = "auto";
+  if ($("vibe-enhanced-preview-banner")) $("vibe-enhanced-preview-banner").hidden = true;
+
+  const agentCard = document.createElement("div");
+  agentCard.className = "gen-ui-card";
+  agentCard.id = `agent-card-${Date.now()}`;
+  agentCard.innerHTML = `
+    <div class="gen-card-header">
+      <span class="gen-model-badge">⚡ ${currentVibeModel.toUpperCase()} · ${currentVibeMode.toUpperCase()}</span>
+      <span style="font-size:11px; color:#38bdf8;">🧠 Synthesizing Generative UI & Code Diffs...</span>
+    </div>
+    <div class="skeleton-shimmer" style="height:32px; background:rgba(255,255,255,0.04); border-radius:6px; margin-bottom:8px;"></div>
+  `;
+  stream.appendChild(agentCard);
+  stream.scrollTop = stream.scrollHeight;
+
+  try {
+    const res = await call("vibe_chat", {
+      prompt: promptText,
+      mode: currentVibeMode,
+      model: currentVibeModel,
+      auto_enhanced: isAutoEnhance
+    });
+
+    if (!res || res.status !== "ok" || !res.turn) {
+      throw new Error(res?.error || "Agent execution failed");
+    }
+
+    const turn = res.turn;
+
+    let toolsHtml = "";
+    if (turn.tool_calls && turn.tool_calls.length) {
+      toolsHtml = `
+        <div class="gen-tools-flow">
+          ${turn.tool_calls.map(tc => `
+            <div class="gen-tool-chip ${tc.status === 'success' ? 'success' : ''}">
+              <span>${tc.type === 'read_file' ? '📄' : (tc.type === 'edit_file' ? '✏️' : '⚡')}</span>
+              <span>${escapeHtml(tc.target || tc.type)}</span>
+              <span style="color:#64748b;">(${escapeHtml(tc.detail)})</span>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    let diffsHtml = "";
+    if (turn.diffs && turn.diffs.length) {
+      diffsHtml = turn.diffs.map(d => `
+        <div class="cursor-diff-box" id="diff-box-${escapeHtml(d.path)}">
+          <div class="cursor-diff-header">
+            <span class="cursor-diff-path">📄 ${escapeHtml(d.path)}</span>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="cursor-diff-stats">
+                <span class="diff-stat-add">+${d.additions}</span>
+                <span class="diff-stat-del">-${d.deletions}</span>
+              </span>
+              <div class="cursor-diff-actions">
+                <button type="button" class="btn-diff-action accept" data-file="${escapeHtml(d.path)}">Accept Diff ✨</button>
+                <button type="button" class="btn-diff-action reject" data-file="${escapeHtml(d.path)}">Reject</button>
+              </div>
+            </div>
+          </div>
+          <div class="cursor-diff-content">
+            ${(d.diff_lines || []).map(l => `
+              <div class="diff-line ${l.type}">${escapeHtml(l.text)}</div>
+            `).join("")}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    agentCard.innerHTML = `
+      <div class="gen-card-header">
+        <span class="gen-model-badge">⚡ ${turn.model.toUpperCase()} · ${turn.mode.toUpperCase()}</span>
+        <span style="font-size:11px; color:#94a3b8;">${new Date().toLocaleTimeString()}</span>
+      </div>
+      
+      <details class="cursor-thinking-accordion" open>
+        <summary>🧠 Chain of Thought (Thinking Process) · Anti-AI-UI Guard Active</summary>
+        <div class="cursor-thinking-body">${escapeHtml(turn.thought)}</div>
+      </details>
+
+      ${toolsHtml}
+
+      <div style="font-size:13px; color:#f1f5f9; line-height:1.6; margin:10px 0;">
+        Готово, Катенька! Код спроектирован по строгим стандартам <b>Anti-AI-UI</b> (без фиолетовых градиентов, с высокой контрастностью и чистой архитектурой) и уже загружен в <b>Intelligent Canvas</b> справа 🐱🐾
+      </div>
+
+      ${diffsHtml}
+    `;
+
+    agentCard.querySelectorAll(".btn-diff-action.accept").forEach(btn => {
+      btn.onclick = async () => {
+        const file = btn.dataset.file;
+        try {
+          const accRes = await call("vibe_accept_diff", {file_path: file});
+          if (accRes.status === "ok") {
+            btn.textContent = "Applied ✨";
+            btn.disabled = true;
+            message("notice", `Changes applied to ${file}! ✨`);
+          }
+        } catch (err) {
+          message("error", `Apply error: ${err.message || err}`);
+        }
+      };
+    });
+
+    agentCard.querySelectorAll(".btn-diff-action.reject").forEach(btn => {
+      btn.onclick = async () => {
+        const file = btn.dataset.file;
+        await call("vibe_reject_diff", {file_path: file});
+        const box = document.getElementById(`diff-box-${file}`);
+        if (box) box.style.opacity = "0.5";
+        btn.textContent = "Rejected";
+        btn.disabled = true;
+      };
+    });
+
+    if (turn.diffs && turn.diffs.length) {
+      const htmlDiff = turn.diffs.find(d => d.path.endsWith(".html"));
+      if (htmlDiff && htmlDiff.new_code) {
+        const iframe = $("vibe-canvas-iframe");
+        if (iframe) {
+          iframe.srcdoc = htmlDiff.new_code;
+        }
+        currentInlineHtmlContent = htmlDiff.new_code;
+        currentInlineHtmlPath = htmlDiff.full_path;
+      }
+
+      const diffContainer = $("canvas-diff-container");
+      if (diffContainer) {
+        diffContainer.innerHTML = turn.diffs.map(d => `
+          <div style="margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+              <strong style="color:#38bdf8; font-size:12px;">${d.path}</strong>
+              <span style="font-size:11px; color:#4ade80;">+${d.additions} / -${d.deletions}</span>
+            </div>
+            <pre class="dsh-prompt-diff" style="max-height:260px; overflow-y:auto;">${(d.diff_lines || []).map(l => escapeHtml(l.text)).join("\n")}</pre>
+          </div>
+        `).join("");
+      }
+      if ($("canvas-diff-count")) $("canvas-diff-count").textContent = turn.diffs.length;
+    }
+
+    if (turn.terminal) {
+      const term = $("vibe-terminal-output");
+      if (term) term.textContent = turn.terminal;
+    }
+
+  } catch (err) {
+    agentCard.innerHTML = `<p class="notice bad">Vibe coding turn error: ${err.message || err}</p>`;
+  }
+
+  stream.scrollTop = stream.scrollHeight;
+}
 
 render();
 scheduleUpdate(true);
 updateMcpBadge();
 loadDshOverview();
+initVibeCoding();
+switchDshView("vibe-coding");
+setActiveNav("nav-vibe-coding");
 

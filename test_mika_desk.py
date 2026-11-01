@@ -224,6 +224,35 @@ def run_qa():
         assert data.get("status") == "ok"
         print("✅ POST /desk (dsh_resume): 200 OK — Engine resumed back to active state!")
 
+    # 11. Test Cursor-like Vibe Coding Agent & Auto-Enhancer
+    # 11a. Test vibe_enhance_prompt
+    post_data = json.dumps({"action": "vibe_enhance_prompt", "prompt": "build web app for anytest.dev"}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data.get("status") == "ok"
+        assert len(data.get("enhanced_prompt", "")) > 500
+        print(f"✅ POST /desk (vibe_enhance_prompt): 200 OK — Auto-enhanced prompt to {data['char_count']} chars!")
+
+    # 11b. Test vibe_chat
+    post_data = json.dumps({"action": "vibe_chat", "prompt": "create sleek landing for anytest", "mode": "vibe", "model": "deepseek-r1"}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data.get("status") == "ok"
+        turn = data.get("turn", {})
+        assert len(turn.get("diffs", [])) >= 1
+        print(f"✅ POST /desk (vibe_chat): 200 OK — Generated {len(turn['diffs'])} diffs and {len(turn['tool_calls'])} tool calls!")
+
+    # 11c. Test VibeBox Sandbox System (robcholz/vibebox inspired)
+    post_data = json.dumps({"action": "vibebox_status"}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data.get("status") == "active"
+        assert data.get("isolation_mode") in ["micro_vm", "seatbelt_kernel_sandbox"]
+        print(f"✅ POST /desk (vibebox_status): 200 OK — VibeBox Sandbox Active ({data['isolation_mode']}), Zero OSX Permissions Required!")
+
     server.shutdown()
     print("🎉 ALL QA TESTS PASSED! ZERO LOAD FAILED OR DISCONNECT ISSUES!")
 

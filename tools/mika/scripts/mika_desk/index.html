@@ -15,13 +15,14 @@
       <strong><img src="/mika-logo.png" width="36" height="36" alt="">Mika AGY 2.0</strong>
       <span class="brand-tag">DeepSeek × ZCode</span>
       <nav class="top-nav">
-        <button type="button" class="nav-pill active" id="nav-tasks">📱 Tasks Desk</button>
-        <button type="button" class="nav-pill" id="nav-dsh-triggers">⚡ Triggers & Threads</button>
-        <button type="button" class="nav-pill" id="nav-dsh-evals">🧠 Policy & Eval</button>
-        <button type="button" class="nav-pill" id="nav-dsh-execution">🚀 Execution & Tickets</button>
+        <button type="button" class="nav-pill active" id="nav-vibe-coding">✨ Vibe Coding (Cursor Mode)</button>
+        <button type="button" class="nav-pill" id="nav-tasks">📱 Tasks Desk</button>
         <button type="button" class="nav-pill" id="nav-coder">🧑‍💻 Coder Team</button>
         <button type="button" class="nav-pill" id="nav-mcp">🧩 MCP Hub (<span id="top-mcp-count">25</span>)</button>
-        <button type="button" class="nav-pill" id="nav-dsh-prompts">📜 Prompts & Skills</button>
+        <button type="button" class="nav-pill" id="nav-dsh-overview">📊 DSH Overview</button>
+        <button type="button" class="nav-pill" id="nav-dsh-triggers">⚡ Triggers</button>
+        <button type="button" class="nav-pill" id="nav-dsh-evals">🧠 Evals</button>
+        <button type="button" class="nav-pill" id="nav-dsh-execution">🚀 Tickets</button>
         <button type="button" class="nav-pill" id="nav-preview">👁️ Live Sandbox</button>
       </nav>
       <div class="header-status-group">
@@ -31,8 +32,134 @@
     </div>
   </header>
   <main class="wrap">
+    <!-- Cursor-Like Vibe Coding Agent & OpenIntelligentUI Canvas (#view-vibe-coding) -->
+    <div id="view-vibe-coding" class="intelligent-canvas-container">
+      <!-- Left Column: Agent Chat & Generative UI Stream -->
+      <section class="vibe-chat-panel">
+        <!-- Vibe Chat Header -->
+        <div class="vibe-chat-header">
+          <div class="vibe-mode-selector">
+            <button type="button" class="vibe-mode-pill active" data-mode="agent">🤖 Agent</button>
+            <button type="button" class="vibe-mode-pill" data-mode="vibe">✨ Vibe</button>
+            <button type="button" class="vibe-mode-pill" data-mode="composer">📝 Composer</button>
+            <button type="button" class="vibe-mode-pill" data-mode="chat">💬 Chat</button>
+          </div>
+          <div class="vibe-header-controls">
+            <div class="enhancer-toggle-wrapper" title="Auto-enhance any prompt into full project grade specification">
+              <label class="switch-mini">
+                <input type="checkbox" id="chk-auto-enhance" checked>
+                <span class="slider-mini"></span>
+              </label>
+              <span class="enhancer-label">⚡ Auto-Enhance</span>
+            </div>
+            <select id="vibe-model-select" class="vibe-model-select">
+              <option value="deepseek-r1">DeepSeek R1 (Thinking)</option>
+              <option value="claude-3-7-sonnet">Claude 3.7 Sonnet</option>
+              <option value="deepseek-v3">DeepSeek V3 (Fast)</option>
+              <option value="mika-coder">Mika Coder 2.0</option>
+            </select>
+            <button type="button" id="btn-vibe-clear" class="mini-btn" title="Clear chat history">🗑️</button>
+          </div>
+        </div>
+
+        <!-- Chat Messages Stream (CopilotKit Generative UI) -->
+        <div id="vibe-chat-stream" class="vibe-chat-stream">
+          <!-- Welcome card -->
+          <div class="vibe-welcome-box">
+            <div class="vibe-welcome-header">
+              <span class="vibe-sparkle-icon">✨</span>
+              <div>
+                <h3>Cursor Vibe Coding Agent & Intelligent Canvas</h3>
+                <p>Привет, Катенька! Назови идею — агент напишет код, подготовит диффы, проведет QA и покажет результат в Canvas 🐱🐾</p>
+              </div>
+            </div>
+            <div class="vibe-preset-prompts">
+              <button type="button" class="vibe-preset-btn" data-vibe="Создай адаптивный high-converting лендинг AnyTest.dev с интерактивным терминалом и красивым темным дизайном">🌐 High-Converting AnyTest.dev UI</button>
+              <button type="button" class="vibe-preset-btn" data-vibe="Спроектируй сервис аутентификации на Python с модульными тестами и самоисцеляющимся QA">🧪 Python Auth Service & QA</button>
+              <button type="button" class="vibe-preset-btn" data-vibe="Сделай глубокий рефакторинг стилей, удали весь AI-slop и добавь строгую типографику Apple HIG">🎨 Anti-AI-UI Refactor & Typography</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Composer Input Deck (Bottom-Docked) -->
+        <div class="vibe-composer-dock">
+          <!-- Context Pills Bar (@ mentions) -->
+          <div class="vibe-context-bar">
+            <span class="context-lead">Context:</span>
+            <button type="button" class="context-chip" data-ctx="@Files">📄 @Files</button>
+            <button type="button" class="context-chip" data-ctx="@Codebase">🗄️ @Codebase</button>
+            <button type="button" class="context-chip" data-ctx="@Terminal">⚡ @Terminal</button>
+            <button type="button" class="context-chip" data-ctx="@Git">🐙 @Git Diff</button>
+            <span id="vibe-active-workspace-badge" class="ws-pill">📁 current_vibe</span>
+          </div>
+
+          <!-- Prompt Enhancer Banner (when primed) -->
+          <div id="vibe-enhanced-preview-banner" class="enhanced-preview-banner" hidden>
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <span style="font-size:11px; color:#38bdf8; font-weight:700;">⚡ Full Project Grade Prompt Active</span>
+              <button type="button" id="btn-revert-enhanced" class="text-link-mini">View Original</button>
+            </div>
+          </div>
+
+          <div class="vibe-textarea-wrapper">
+            <textarea id="vibe-prompt-input" rows="2" placeholder="Describe what to build or fix... Type @ to reference files (Enter sends, Shift+Enter new line)"></textarea>
+            <div class="vibe-textarea-actions">
+              <button type="button" id="btn-enhance-prompt-action" class="btn-enhance-prompt" title="1-Click: Upgrade to Full Project Grade Prompt">⚡ Enhance</button>
+              <button type="button" id="btn-vibe-send" class="btn-vibe-send" title="Dispatch to Vibe Agent (Enter)">🚀</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: OpenIntelligentUI Live Canvas & Sidecar -->
+      <section class="vibe-canvas-panel">
+        <div class="vibe-canvas-header">
+          <div class="canvas-tab-group">
+            <button type="button" class="canvas-tab-btn active" id="tab-canvas-preview">🌐 Live Preview</button>
+            <button type="button" class="canvas-tab-btn" id="tab-canvas-diff">📝 Code & Diffs (<span id="canvas-diff-count">0</span>)</button>
+            <button type="button" class="canvas-tab-btn" id="tab-canvas-terminal">⚡ Terminal QA</button>
+          </div>
+          <div class="canvas-header-actions">
+            <div class="device-toggle-group">
+              <button type="button" class="device-btn active" id="vibe-dev-desktop" title="Desktop View (100%)">💻 Desktop</button>
+              <button type="button" class="device-btn" id="vibe-dev-mobile" title="Mobile View (390px)">📱 Mobile</button>
+            </div>
+            <button type="button" id="vibe-btn-reload-canvas" class="mini-control-btn" title="Reload Canvas">🔄</button>
+            <button type="button" id="vibe-btn-expand-canvas" class="mini-control-btn" title="Open Fullscreen Modal">⛶</button>
+            <button type="button" id="vibe-btn-open-browser" class="mini-control-btn cta" title="Open in macOS Chrome">🚀 Browser</button>
+          </div>
+        </div>
+
+        <div class="vibe-canvas-body">
+          <!-- Canvas View 1: Live Web Preview Viewport -->
+          <div id="canvas-view-preview" class="canvas-view active">
+            <iframe id="vibe-canvas-iframe" class="vibe-canvas-iframe" sandbox="allow-scripts allow-forms allow-same-origin allow-modals"></iframe>
+          </div>
+
+          <!-- Canvas View 2: Code & Diffs Inspector -->
+          <div id="canvas-view-diff" class="canvas-view" hidden>
+            <div class="diff-toolbar">
+              <span id="canvas-diff-file-label" class="diff-file-label">index.html</span>
+              <div style="display:flex; gap:8px;">
+                <button type="button" id="canvas-btn-accept-all" class="mcp-action-btn install">Accept All Changes ✨</button>
+                <button type="button" id="canvas-btn-reject-all" class="mcp-action-btn uninstall">Reject All</button>
+              </div>
+            </div>
+            <div id="canvas-diff-container" class="canvas-diff-container">
+              <p class="hint">No pending diffs. Generate code with the Vibe Agent to see live diffs.</p>
+            </div>
+          </div>
+
+          <!-- Canvas View 3: Live Terminal QA -->
+          <div id="canvas-view-terminal" class="canvas-view" hidden>
+            <pre id="vibe-terminal-output" class="vibe-terminal-pre">Mika Vibe Terminal Ready. Running test assertions on every turn...</pre>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <!-- DeepSeek Harness Superagent 3-Questions Supervisory Banner (docs/000 & docs/005) -->
-    <div id="dsh-super-banner" class="dsh-super-banner">
+    <div id="dsh-super-banner" class="dsh-super-banner" hidden>
       <div class="dsh-banner-header">
         <div class="dsh-title-group">
           <span class="dsh-icon">⚡</span>
