@@ -172,12 +172,37 @@
               </div>
             </div>
           </div>
+          <!-- Inline Live Web Preview Card -->
+          <div id="task-web-preview-card" class="task-web-preview-card" hidden>
+            <div class="inline-preview-header">
+              <div class="inline-preview-left">
+                <span class="preview-dot red"></span>
+                <span class="preview-dot yellow"></span>
+                <span class="preview-dot green"></span>
+                <span id="inline-preview-title" class="inline-preview-title">🌐 Live Web Preview</span>
+              </div>
+              <div class="inline-preview-controls">
+                <div class="device-toggle-group">
+                  <button type="button" class="device-btn active" id="btn-device-desktop" title="Desktop View (100%)">💻 Desktop</button>
+                  <button type="button" class="device-btn" id="btn-device-mobile" title="Mobile View (390px)">📱 Mobile</button>
+                </div>
+                <button type="button" id="btn-reload-inline" class="mini-control-btn" title="Перезагрузить страницу">🔄</button>
+                <button type="button" id="btn-expand-preview" class="mini-control-btn highlight" title="Развернуть на весь экран">⛶ Fullscreen</button>
+                <button type="button" id="btn-open-in-browser" class="mini-control-btn cta" title="Открыть в Chrome / браузере macOS">🚀 Браузер</button>
+              </div>
+            </div>
+            <div class="inline-preview-viewport" id="inline-preview-viewport">
+              <iframe id="inline-preview-iframe" class="inline-preview-iframe" sandbox="allow-scripts allow-forms allow-same-origin allow-modals"></iframe>
+            </div>
+          </div>
+
           <div id="task-artifacts" hidden>
             <strong>📁 Созданные материалы и файлы:</strong>
             <div id="artifacts-list" class="artifacts-grid"></div>
           </div>
           <div id="task-actions" class="task-actions-row" hidden>
-            <button id="btn-open-preview-main" type="button" class="action-btn preview-launch-btn">👁️ Project Live Preview</button>
+            <button id="btn-open-preview-main" type="button" class="action-btn preview-launch-btn">🌐 Live Page Preview</button>
+            <button id="btn-open-dev-sandbox" type="button" class="action-btn dev-sandbox-btn">🛠️ Dev Sandbox & Terminal</button>
             <button id="btn-rerun" type="button" class="action-btn">🔄 Повторить задачу</button>
             <button id="btn-modify" type="button" class="action-btn">✏️ Изменить и перезапустить</button>
           </div>
@@ -207,6 +232,16 @@
         <div class="mcp-search-row">
           <input type="text" id="mcp-search-query" placeholder="🔍 Поиск MCP серверов на GitHub (topic:mcp-server), Smithery AI или в каталоге...">
           <button type="button" id="btn-sync-github" class="action-btn">🐙 Поиск на GitHub</button>
+        </div>
+
+        <div class="mcp-filter-chips" id="mcp-category-chips">
+          <button type="button" class="mcp-chip active" data-cat="all">🌟 Все категории</button>
+          <button type="button" class="mcp-chip" data-cat="zcode">⚡ ZCode & ACPs</button>
+          <button type="button" class="mcp-chip" data-cat="deepseek">🧠 DeepSeek</button>
+          <button type="button" class="mcp-chip" data-cat="paseo">📊 Paseo</button>
+          <button type="button" class="mcp-chip" data-cat="dev">🛠️ Developer Tools</button>
+          <button type="button" class="mcp-chip" data-cat="db">🗄️ Database & Cloud</button>
+          <button type="button" class="mcp-chip" data-cat="github">🐙 GitHub & Smithery</button>
         </div>
 
         <div id="mcp-view-market">
@@ -330,6 +365,38 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Full-Screen Live Web Page Preview Modal -->
+  <div id="web-page-modal" class="web-modal" hidden>
+    <div class="web-modal-content">
+      <div class="web-modal-header">
+        <div class="web-modal-dots">
+          <span class="preview-dot red"></span>
+          <span class="preview-dot yellow"></span>
+          <span class="preview-dot green"></span>
+        </div>
+        <div class="web-address-bar">
+          <span class="web-ssl-icon">🔒</span>
+          <input type="text" id="web-modal-url" readonly value="https://www.anytest.dev">
+          <button type="button" id="btn-web-modal-reload" class="web-bar-btn" title="Перезагрузить страницу">🔄</button>
+        </div>
+        <div class="web-modal-actions">
+          <div class="device-toggle-group">
+            <button type="button" class="device-btn active" id="btn-web-desktop">💻 Desktop</button>
+            <button type="button" class="device-btn" id="btn-web-tablet">📱 Tablet</button>
+            <button type="button" class="device-btn" id="btn-web-mobile">📱 Mobile</button>
+          </div>
+          <button type="button" id="btn-web-open-browser" class="web-cta-btn">🚀 Открыть в Chrome</button>
+          <button type="button" id="btn-web-open-dev" class="web-sub-btn">🛠️ Code & Terminal</button>
+          <button type="button" id="btn-close-web-modal" class="close-btn" title="Закрыть">✕</button>
+        </div>
+      </div>
+      <div class="web-modal-body" id="web-modal-body">
+        <div class="web-frame-wrapper" id="web-frame-wrapper">
+          <iframe id="web-page-iframe" class="web-page-iframe" sandbox="allow-scripts allow-forms allow-same-origin allow-modals"></iframe>
         </div>
       </div>
     </div>

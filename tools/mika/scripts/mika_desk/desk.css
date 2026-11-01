@@ -316,3 +316,63 @@ textarea::placeholder { color: var(--muted); opacity: 1; }
 .deepseek-reasoning-box[open] .deepseek-reasoning-summary::after { transform: translateY(2px) rotate(225deg); }
 .deepseek-reasoning-content { padding: 12px 16px; border-top: 1px solid var(--line); background: var(--surface); font-size: 13px; line-height: 1.6; color: var(--muted); }
 .deepseek-reasoning-content pre { margin: 0; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word; color: var(--ink); }
+
+/* Task Inline Live Web Preview Card */
+.task-web-preview-card { margin: 18px 0; border: 1px solid #1e293b; border-radius: 14px; background: #0b0f19; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35); overflow: hidden; display: flex; flex-direction: column; }
+.inline-preview-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #0f172a; border-bottom: 1px solid #1e293b; }
+.inline-preview-left { display: flex; align-items: center; gap: 8px; }
+.preview-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.preview-dot.red { background: #ef4444; }
+.preview-dot.yellow { background: #f59e0b; }
+.preview-dot.green { background: #10b981; }
+.inline-preview-title { font-size: 13px; font-weight: 600; color: #f1f5f9; margin-left: 6px; }
+
+.inline-preview-controls { display: flex; align-items: center; gap: 8px; }
+.device-toggle-group { display: inline-flex; background: #1e293b; border-radius: 8px; padding: 2px; }
+.device-btn { font-size: 11px; padding: 4px 10px; border: 0; border-radius: 6px; background: transparent; color: #94a3b8; cursor: pointer; transition: all 0.15s; }
+.device-btn:hover { color: #fff; }
+.device-btn.active { background: #38bdf8; color: #080c14; font-weight: 700; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+
+.mini-control-btn { font-size: 12px; padding: 4px 10px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: #cbd5e1; cursor: pointer; transition: all 0.15s; }
+.mini-control-btn:hover { background: #334155; color: #fff; }
+.mini-control-btn.highlight { border-color: rgba(56, 189, 248, 0.4); color: #38bdf8; }
+.mini-control-btn.cta { background: linear-gradient(135deg, #2563eb, #38bdf8); color: #fff; border: 0; font-weight: 600; }
+
+.inline-preview-viewport { height: 460px; background: #050811; display: flex; justify-content: center; align-items: stretch; overflow: hidden; transition: width 0.25s ease; width: 100%; }
+.inline-preview-viewport.mobile { max-width: 390px; margin: 12px auto; border-radius: 20px; border: 4px solid #1e293b; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+.inline-preview-iframe { width: 100%; height: 100%; border: 0; background: #ffffff; }
+
+.dev-sandbox-btn { background: #1e293b !important; color: #cbd5e1 !important; border: 1px solid #334155 !important; font-weight: 600 !important; }
+.dev-sandbox-btn:hover { background: #334155 !important; color: #fff !important; }
+
+/* MCP Category Filter Chips */
+.mcp-filter-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
+.mcp-chip { padding: 6px 14px; font-size: 12px; font-weight: 600; border-radius: 20px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; transition: all 0.15s; }
+.mcp-chip:hover { color: var(--ink); border-color: var(--muted); }
+.mcp-chip.active { background: #38bdf8; color: #080c14; border-color: #38bdf8; font-weight: 700; box-shadow: 0 2px 6px rgba(56, 189, 248, 0.25); }
+
+/* Dedicated Full-Screen Web Page Modal */
+.web-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 1001; padding: 16px; }
+.web-modal[hidden] { display: none !important; }
+.web-modal-content { width: 98vw; max-width: 1380px; height: 92vh; background: #0a0e1a; border: 1px solid #1e293b; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6); }
+
+.web-modal-header { padding: 12px 18px; border-bottom: 1px solid #1e293b; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #0f172a; }
+.web-modal-dots { display: flex; align-items: center; gap: 6px; }
+
+.web-address-bar { flex: 1; max-width: 580px; display: flex; align-items: center; background: #161f30; border: 1px solid #2d3c54; border-radius: 8px; padding: 5px 12px; gap: 8px; }
+.web-ssl-icon { font-size: 12px; color: #10b981; }
+.web-address-bar input { flex: 1; background: transparent; border: 0; color: #38bdf8; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; outline: none; }
+.web-bar-btn { background: transparent; border: 0; color: #94a3b8; cursor: pointer; font-size: 13px; padding: 2px 4px; }
+.web-bar-btn:hover { color: #fff; }
+
+.web-modal-actions { display: flex; align-items: center; gap: 10px; }
+.web-cta-btn { background: linear-gradient(135deg, #2563eb, #38bdf8); color: #fff; font-size: 12px; font-weight: 700; border: 0; border-radius: 8px; padding: 6px 14px; cursor: pointer; transition: all 0.15s; }
+.web-cta-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(56, 189, 248, 0.35); }
+.web-sub-btn { background: #1e293b; color: #cbd5e1; font-size: 12px; font-weight: 600; border: 1px solid #334155; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.web-sub-btn:hover { background: #334155; color: #fff; }
+
+.web-modal-body { flex: 1; display: flex; justify-content: center; align-items: stretch; background: #050811; overflow: hidden; padding: 12px; }
+.web-frame-wrapper { flex: 1; width: 100%; height: 100%; display: flex; justify-content: center; align-items: stretch; background: #050811; transition: all 0.25s ease; }
+.web-frame-wrapper.mobile { max-width: 400px; height: 96%; margin: auto; border: 8px solid #1e293b; border-radius: 36px; box-shadow: 0 20px 50px rgba(0,0,0,0.7); }
+.web-frame-wrapper.tablet { max-width: 840px; height: 96%; margin: auto; border: 8px solid #1e293b; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.7); }
+.web-page-iframe { width: 100%; height: 100%; border: 0; background: #ffffff; border-radius: 8px; }

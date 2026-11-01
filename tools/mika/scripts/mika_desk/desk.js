@@ -162,6 +162,10 @@ function choose(task) {
   if (selectedId) sessionStorage.setItem("selectedTask", selectedId);
   else sessionStorage.removeItem("selectedTask");
   currentPreviewWs = task?.workspace || "";
+  currentInlineHtmlPath = "";
+  currentInlineHtmlContent = "";
+  if ($("task-web-preview-card")) $("task-web-preview-card").hidden = true;
+  if ($("inline-preview-iframe")) $("inline-preview-iframe").srcdoc = "";
 }
 
 function taskMessage(task) {
@@ -234,6 +238,7 @@ function render() {
   if ($("task-artifacts")) $("task-artifacts").hidden = !task;
   if ($("task-actions")) $("task-actions").hidden = !task;
   if ($("coder-board")) $("coder-board").hidden = !task;
+  if ($("task-web-preview-card")) $("task-web-preview-card").hidden = !task;
   const action = task?.status === "waiting_for_answer" ? "answer" :
     task?.status === "running" && overview?.capabilities.includes("task_steer") ? "steer" : null;
   $("respond").hidden = !action;
@@ -284,20 +289,40 @@ function render() {
   const artifactsEl = $("task-artifacts");
   const artifactsList = $("artifacts-list");
   const actionsEl = $("task-actions");
+  const arts = task.artifacts || [];
+  const htmlArt = arts.find(a => a.type === "html" || (a.name && a.name.endsWith(".html")));
+
+  // Handle Inline Web Preview Card
+  const webPreviewCard = $("task-web-preview-card");
+  if (webPreviewCard) {
+    if (htmlArt && htmlArt.path) {
+      webPreviewCard.hidden = false;
+      const titleEl = $("inline-preview-title");
+      if (titleEl) titleEl.textContent = `🌐 Live Web Preview • ${htmlArt.name}`;
+      loadInlinePreview(htmlArt.path);
+    } else {
+      webPreviewCard.hidden = true;
+    }
+  }
+
   if (artifactsEl && artifactsList) {
-    const arts = task.artifacts || [];
     artifactsEl.hidden = arts.length === 0;
     artifactsList.replaceChildren();
     for (const art of arts) {
-      const icon = art.type === "pptx" ? "📽️ " : art.type === "xlsx" ? "📊 " : art.type === "docx" ? "📑 " : art.type === "folder" ? "📁 " : "📄 ";
+      const isHtml = art.type === "html" || (art.name && art.name.endsWith(".html"));
+      const icon = isHtml ? "🌐 " : art.type === "pptx" ? "📽️ " : art.type === "xlsx" ? "📊 " : art.type === "docx" ? "📑 " : art.type === "folder" ? "📁 " : "📄 ";
       const artBtn = element("button", icon + art.name, "artifact-btn");
       artBtn.type = "button";
       artBtn.title = (art.title || "Open deliverable") + " • " + art.path;
       artBtn.addEventListener("click", () => {
-        work(async () => {
-          await call("open_file", {path: art.path});
-          message("notice", "Opened " + art.name + " on macOS!");
-        });
+        if (isHtml) {
+          openLivePagePreview(art.path, art.name, task.workspace);
+        } else {
+          work(async () => {
+            await call("open_file", {path: art.path});
+            message("notice", "Opened " + art.name + " on macOS!");
+          });
+        }
       });
       artifactsList.append(artBtn);
     }
@@ -305,6 +330,20 @@ function render() {
 
   if (actionsEl) {
     actionsEl.hidden = false;
+    const btnPreviewMain = $("btn-open-preview-main");
+    if (btnPreviewMain) {
+      if (htmlArt) {
+        btnPreviewMain.textContent = "🌐 Live Page Preview";
+        btnPreviewMain.onclick = () => openLivePagePreview(htmlArt.path, htmlArt.name, task.workspace);
+      } else {
+        btnPreviewMain.textContent = "👁️ Project Live Preview";
+        btnPreviewMain.onclick = () => openProjectPreview(task.workspace);
+      }
+    }
+    const btnDevSandbox = $("btn-open-dev-sandbox");
+    if (btnDevSandbox) {
+      btnDevSandbox.onclick = () => openProjectPreview(task.workspace);
+    }
     $("btn-rerun").onclick = () => {
       if (!task.goal) return;
       work(async () => {
@@ -743,12 +782,62 @@ function renderMcpCards(list) {
   });
 }
 
+let currentMarketList = [];
+let currentMcpCategory = "all";
+
+function filterAndRenderMcpMarket() {
+  if (!currentMarketList || !currentMarketList.length) {
+    renderMcpCards([]);
+    return;
+  }
+  if (currentMcpCategory === "all") {
+    renderMcpCards(currentMarketList);
+    return;
+  }
+  const filtered = currentMarketList.filter(srv => {
+    const cat = (srv.category || "").toLowerCase();
+    const name = (srv.name || "").toLowerCase();
+    const id = (srv.id || "").toLowerCase();
+    const desc = (srv.description || "").toLowerCase();
+    if (currentMcpCategory === "zcode") {
+      return cat.includes("zcode") || cat.includes("acp") || name.includes("zcode") || id.includes("zcode") || desc.includes("zcode");
+    }
+    if (currentMcpCategory === "deepseek") {
+      return cat.includes("deepseek") || name.includes("deepseek") || id.includes("deepseek") || desc.includes("deepseek");
+    }
+    if (currentMcpCategory === "paseo") {
+      return cat.includes("paseo") || name.includes("paseo") || id.includes("paseo") || desc.includes("paseo");
+    }
+    if (currentMcpCategory === "dev") {
+      return cat.includes("dev") || cat.includes("developer") || cat.includes("code") || cat.includes("witness") || id.includes("git") || desc.includes("developer");
+    }
+    if (currentMcpCategory === "db") {
+      return cat.includes("data") || cat.includes("db") || cat.includes("cloud") || cat.includes("postgres") || cat.includes("sqlite") || desc.includes("database");
+    }
+    if (currentMcpCategory === "github") {
+      return cat.includes("github") || cat.includes("smithery") || (srv.source && srv.source.includes("github"));
+    }
+    return true;
+  });
+  renderMcpCards(filtered);
+}
+
+document.querySelectorAll(".mcp-chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll(".mcp-chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    currentMcpCategory = chip.dataset.cat || "all";
+    filterAndRenderMcpMarket();
+  });
+});
+
 async function loadMcpMarket() {
   const grid = $("mcp-market-grid");
   if (!grid) return;
   try {
     const res = await call("mcp_market");
-    renderMcpCards(res.marketplace || []);
+    currentMarketList = res.marketplace || [];
+    filterAndRenderMcpMarket();
   } catch (e) {
     grid.innerHTML = `<p class="hint">Cannot reach MCP service: ${e.message || e}</p>`;
   }
@@ -760,7 +849,8 @@ async function searchMcpMarket(query) {
   grid.innerHTML = '<p class="hint">🔍 Поиск по GitHub & Smithery MCP источникам...</p>';
   try {
     const res = await call("mcp_search", {query});
-    renderMcpCards(res.results || []);
+    currentMarketList = res.results || [];
+    filterAndRenderMcpMarket();
   } catch (e) {
     grid.innerHTML = `<p class="hint">Ошибка поиска: ${e.message || e}</p>`;
   }
@@ -852,14 +942,154 @@ $("mcp-search-query")?.addEventListener("keydown", (e) => {
 });
 
 // =========================================================================
-// Project Live Preview Sandbox Logic (ZCode / Paseo / DeepSeek Harness)
+// Project Live Preview Sandbox & Web Page Preview (ZCode / Paseo / DeepSeek Harness)
 // =========================================================================
 let currentPreviewWs = "";
 let currentPreviewFile = "";
-const previewModal = $("project-preview-modal");
+let currentInlineHtmlPath = "";
+let currentInlineHtmlContent = "";
+let currentWebPath = "";
+let currentWebWs = "";
 
-$("btn-open-preview")?.addEventListener("click", () => openProjectPreview());
-$("btn-open-preview-main")?.addEventListener("click", () => openProjectPreview());
+const previewModal = $("project-preview-modal");
+const webPageModal = $("web-page-modal");
+
+// --- Inline Web Preview Handling ---
+async function loadInlinePreview(filePath, forceReload = false) {
+  if (!filePath) return;
+  const iframe = $("inline-preview-iframe");
+  if (!iframe) return;
+  if (!forceReload && currentInlineHtmlPath === filePath && currentInlineHtmlContent) {
+    return;
+  }
+  currentInlineHtmlPath = filePath;
+  try {
+    const res = await call("project_read_file", {path: filePath});
+    if (res && res.content) {
+      currentInlineHtmlContent = res.content;
+      iframe.srcdoc = res.content;
+    }
+  } catch (err) {
+    console.error("Failed to load inline preview:", err);
+  }
+}
+
+$("btn-device-desktop")?.addEventListener("click", () => {
+  $("btn-device-desktop")?.classList.add("active");
+  $("btn-device-mobile")?.classList.remove("active");
+  $("inline-preview-viewport")?.classList.remove("mobile");
+});
+
+$("btn-device-mobile")?.addEventListener("click", () => {
+  $("btn-device-mobile")?.classList.add("active");
+  $("btn-device-desktop")?.classList.remove("active");
+  $("inline-preview-viewport")?.classList.add("mobile");
+});
+
+$("btn-reload-inline")?.addEventListener("click", () => {
+  if (currentInlineHtmlPath) loadInlinePreview(currentInlineHtmlPath, true);
+});
+
+$("btn-expand-preview")?.addEventListener("click", () => {
+  if (currentInlineHtmlPath) openLivePagePreview(currentInlineHtmlPath, selected?.goal, selected?.workspace);
+});
+
+$("btn-open-in-browser")?.addEventListener("click", async () => {
+  if (currentInlineHtmlPath) {
+    await call("open_file", {path: currentInlineHtmlPath});
+    message("notice", "Opened deliverable in macOS Chrome/browser! 🚀");
+  }
+});
+
+// --- Dedicated Full-Screen Web Page Preview Modal ---
+async function openLivePagePreview(htmlPath, title, wsPath) {
+  currentWebPath = htmlPath;
+  currentWebWs = wsPath || selected?.workspace || currentPreviewWs;
+  if (webPageModal) webPageModal.hidden = false;
+
+  const urlBar = $("web-modal-url");
+  if (urlBar) {
+    const t = (title || "").toLowerCase();
+    if (t.includes("anytest")) {
+      urlBar.value = "https://www.anytest.dev";
+    } else if (title) {
+      urlBar.value = `https://${title.replace(/[^a-zA-Z0-9.-]/g, "").toLowerCase() || "app.preview"}.dev`;
+    } else {
+      urlBar.value = htmlPath ? `file://${htmlPath}` : "preview://app";
+    }
+  }
+
+  const iframe = $("web-page-iframe");
+  if (iframe && htmlPath) {
+    try {
+      const res = await call("project_read_file", {path: htmlPath});
+      if (res && res.content) {
+        iframe.srcdoc = res.content;
+      }
+    } catch (err) {
+      iframe.srcdoc = `<p style="padding:20px; font-family:sans-serif; color:#ef4444">Error loading preview: ${err.message || err}</p>`;
+    }
+  }
+}
+
+$("btn-web-desktop")?.addEventListener("click", () => {
+  $("btn-web-desktop")?.classList.add("active");
+  $("btn-web-tablet")?.classList.remove("active");
+  $("btn-web-mobile")?.classList.remove("active");
+  $("web-frame-wrapper")?.classList.remove("mobile", "tablet");
+});
+
+$("btn-web-tablet")?.addEventListener("click", () => {
+  $("btn-web-tablet")?.classList.add("active");
+  $("btn-web-desktop")?.classList.remove("active");
+  $("btn-web-mobile")?.classList.remove("active");
+  $("web-frame-wrapper")?.classList.remove("mobile");
+  $("web-frame-wrapper")?.classList.add("tablet");
+});
+
+$("btn-web-mobile")?.addEventListener("click", () => {
+  $("btn-web-mobile")?.classList.add("active");
+  $("btn-web-desktop")?.classList.remove("active");
+  $("btn-web-tablet")?.classList.remove("active");
+  $("web-frame-wrapper")?.classList.remove("tablet");
+  $("web-frame-wrapper")?.classList.add("mobile");
+});
+
+$("btn-web-modal-reload")?.addEventListener("click", () => {
+  if (currentWebPath) openLivePagePreview(currentWebPath, selected?.goal, currentWebWs);
+});
+
+$("btn-web-open-browser")?.addEventListener("click", async () => {
+  if (currentWebPath) {
+    await call("open_file", {path: currentWebPath});
+    message("notice", "Opened deliverable in macOS Chrome/browser! 🚀");
+  }
+});
+
+$("btn-web-open-dev")?.addEventListener("click", () => {
+  if (webPageModal) webPageModal.hidden = true;
+  openProjectPreview(currentWebWs);
+});
+
+$("btn-close-web-modal")?.addEventListener("click", () => {
+  if (webPageModal) webPageModal.hidden = true;
+});
+
+webPageModal?.addEventListener("click", (e) => {
+  if (e.target === webPageModal) webPageModal.hidden = true;
+});
+
+// --- Developer Sandbox Modal Handling ---
+$("btn-open-preview")?.addEventListener("click", () => {
+  const arts = selected?.artifacts || [];
+  const htmlArt = arts.find(a => a.type === "html" || (a.name && a.name.endsWith(".html")));
+  if (htmlArt) {
+    openLivePagePreview(htmlArt.path, htmlArt.name, selected?.workspace);
+  } else {
+    openProjectPreview();
+  }
+});
+$("btn-open-dev-sandbox")?.addEventListener("click", () => openProjectPreview());
 $("btn-close-preview")?.addEventListener("click", () => {
   if (previewModal) previewModal.hidden = true;
 });
@@ -928,10 +1158,10 @@ async function openProjectPreview(workspacePath) {
       });
     }
 
-    // Default open first important file (index.html, PLAN.md, main.py, or index 0)
-    const defFile = files.find(f => f.name === "index.html") || files.find(f => f.name === "PLAN.md") || files.find(f => f.name === "main.py") || files[0];
+    // Default open first important file (index.html, or any .html, PLAN.md, main.py, or index 0)
+    const defFile = files.find(f => f.name === "index.html") || files.find(f => f.ext === ".html") || files.find(f => f.name === "PLAN.md") || files.find(f => f.name === "main.py") || files[0];
     if (defFile) {
-      loadPreviewFile(defFile.path, defFile.name, (defFile.size / 1024).toFixed(1) + " KB", defFile.ext);
+      await loadPreviewFile(defFile.path, defFile.name, (defFile.size / 1024).toFixed(1) + " KB", defFile.ext);
       if (defFile.ext === ".html") {
         showPreviewTab("web");
       }
@@ -1070,7 +1300,13 @@ $("nav-mcp")?.addEventListener("click", () => {
 
 $("nav-preview")?.addEventListener("click", () => {
   setActiveNav("nav-preview");
-  openProjectPreview();
+  const arts = selected?.artifacts || [];
+  const htmlArt = arts.find(a => a.type === "html" || (a.name && a.name.endsWith(".html")));
+  if (htmlArt) {
+    openLivePagePreview(htmlArt.path, htmlArt.name, selected?.workspace);
+  } else {
+    openProjectPreview();
+  }
 });
 
 // Global Keyboard Shortcuts (DeepSeek / ZCode productivity)
@@ -1078,6 +1314,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     if (mcpModal && !mcpModal.hidden) mcpModal.hidden = true;
     if (previewModal && !previewModal.hidden) previewModal.hidden = true;
+    if (webPageModal && !webPageModal.hidden) webPageModal.hidden = true;
   }
   if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
     if (document.activeElement === $("goal") && !$("submit-goal").disabled) {
@@ -1094,6 +1331,10 @@ function startNewTask() {
   $("goal").value = "";
   $("goal").focus();
   currentPreviewWs = "";
+  currentInlineHtmlPath = "";
+  currentInlineHtmlContent = "";
+  if ($("task-web-preview-card")) $("task-web-preview-card").hidden = true;
+  if ($("inline-preview-iframe")) $("inline-preview-iframe").srcdoc = "";
   render();
   window.scrollTo({top: 0, behavior: "smooth"});
 }

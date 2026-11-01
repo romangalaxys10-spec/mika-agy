@@ -48,6 +48,7 @@ cp "$PROJECT_ROOT/agent-server/mika_agent_server.py" "$APP_BUNDLE/Contents/Resou
 cp "$PROJECT_ROOT/agent-server/georgia_presentation_builder.py" "$APP_BUNDLE/Contents/Resources/mika-core/georgia_presentation_builder.py"
 cp "$PROJECT_ROOT/agent-server/mika_employee_suite.py" "$APP_BUNDLE/Contents/Resources/mika-core/mika_employee_suite.py"
 cp "$PROJECT_ROOT/agent-server/mika_mcp_engine.py" "$APP_BUNDLE/Contents/Resources/mika-core/mika_mcp_engine.py"
+cp "$PROJECT_ROOT/agent-server/mika_coder_team.py" "$APP_BUNDLE/Contents/Resources/mika-core/mika_coder_team.py"
 cp "$PROJECT_ROOT/agent-server/mika_long_horizon.py" "$APP_BUNDLE/Contents/Resources/mika-core/mika_long_horizon.py"
 cp "$PROJECT_ROOT/agent-server/mac_action" "$APP_BUNDLE/Contents/Resources/mika-core/mac_action"
 chmod +x "$APP_BUNDLE/Contents/Resources/mika-core/mika_agent_server.py" "$APP_BUNDLE/Contents/Resources/mika-core/mac_action"

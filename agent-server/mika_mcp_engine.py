@@ -224,6 +224,102 @@ MARKETPLACE_SERVERS = {
         "env": {},
         "transport": "stdio",
         "status": "ready"
+    },
+    "zcode-ai": {
+        "id": "zcode-ai",
+        "name": "ZCode & Z.ai Multi-Agent Bridge",
+        "category": "ZCode / ACP",
+        "icon": "⚡",
+        "description": "Sub-agent offloading for research, synthesis, and autonomous coding via Z.ai headless API.",
+        "command": "uvx",
+        "args": ["zcode-mcp-bridge"],
+        "env": {"ZAI_API_KEY": ""},
+        "transport": "stdio",
+        "status": "ready"
+    },
+    "deepseek-coder-harness": {
+        "id": "deepseek-coder-harness",
+        "name": "DeepSeek Coder & R1 Reasoning Harness",
+        "category": "DeepSeek",
+        "icon": "🧠",
+        "description": "Chain-of-Verification (CoVe), self-healing test automation, and PRM step supervision for full-stack projects.",
+        "command": "uvx",
+        "args": ["deepseek-harness-mcp"],
+        "env": {},
+        "transport": "stdio",
+        "status": "ready"
+    },
+    "paseo-executive-deck": {
+        "id": "paseo-executive-deck",
+        "name": "Paseo Boardroom Demo & Presentation Suite",
+        "category": "Paseo",
+        "icon": "📊",
+        "description": "Dark theme executive HTML5 boardroom demo decks, responsive stepper navigation, pure SVG charts, and KPI metric cards.",
+        "command": "npx",
+        "args": ["-y", "paseo-deck-mcp"],
+        "env": {},
+        "transport": "stdio",
+        "status": "ready"
+    },
+    "superdesign-ui": {
+        "id": "superdesign-ui",
+        "name": "Superdesign UI/UX & Modern Web Guidance",
+        "category": "ZCode / Paseo",
+        "icon": "🎨",
+        "description": "Anti-slop design system: container queries, View Transitions, Glassmorphism, and responsive single-file mockups.",
+        "command": "npx",
+        "args": ["-y", "superdesign-ui-mcp"],
+        "env": {},
+        "transport": "stdio",
+        "status": "ready"
+    },
+    "in-toto-witness": {
+        "id": "in-toto-witness",
+        "name": "In-toto Witness Supply Chain Attestation",
+        "category": "Security / ACP",
+        "icon": "🛡️",
+        "description": "Cryptographic ED25519 attestation, provenance hashing, and artifact verification for software supply chains.",
+        "command": "/Users/ekaterina.gwaladze/.gemini/antigravity/scratch/bin/witness",
+        "args": ["run", "--step", "build", "--key", str(Path.home() / ".mika" / "witness_key.pem")],
+        "env": {},
+        "transport": "stdio",
+        "status": "installed"
+    },
+    "fable-brainstorming": {
+        "id": "fable-brainstorming",
+        "name": "Fable Multi-Agent Brainstorming & Dialogue",
+        "category": "Paseo",
+        "icon": "💡",
+        "description": "Exploration of requirements, system architectures, and collaborative design dialogue.",
+        "command": "npx",
+        "args": ["-y", "fable-brainstorm-mcp"],
+        "env": {},
+        "transport": "stdio",
+        "status": "ready"
+    },
+    "token-efficiency": {
+        "id": "token-efficiency",
+        "name": "Token Efficiency & AST-First Optimizer",
+        "category": "ZCode / ACP",
+        "icon": "⚡",
+        "description": "AST-first targeted range reads, Dynamic Tool Output Compression (DTOC), and context compaction.",
+        "command": "uvx",
+        "args": ["token-efficiency-mcp"],
+        "env": {},
+        "transport": "stdio",
+        "status": "ready"
+    },
+    "unslop-editor": {
+        "id": "unslop-editor",
+        "name": "Unslop Intentional Craft & Typography",
+        "category": "DeepSeek / Paseo",
+        "icon": "✒️",
+        "description": "Strip generic AI slop, enforce high-contrast typography, and build disciplined color palettes.",
+        "command": "npx",
+        "args": ["-y", "unslop-ui-mcp"],
+        "env": {},
+        "transport": "stdio",
+        "status": "ready"
     }
 }
 
