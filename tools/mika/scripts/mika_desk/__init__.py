@@ -27,7 +27,8 @@ FIELDS = {
     "status": {"task_id"}, "cancel": {"task_id"}, "answer": {"task_id", "text"},
     "steer": {"task_id", "text"}, "open_file": {"path"},
     "mcp_market": set(), "mcp_servers": set(), "mcp_install": {"id"},
-    "mcp_uninstall": {"id"}, "mcp_toggle": {"id"}, "horizon": {"task_id"}
+    "mcp_uninstall": {"id"}, "mcp_toggle": {"id"}, "horizon": {"task_id"}, "mcp_search": {"query"},
+    "coder_team": {"task_id", "goal"}
 }
 
 
@@ -85,6 +86,23 @@ class Desk(ThreadingHTTPServer):
                 return {"marketplace": mcp_engine.list_marketplace()}
             except Exception as e:
                 return {"error": str(e), "marketplace": []}
+
+        if action == "mcp_search":
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
+                from mika_mcp_engine import mcp_engine
+                return {"results": mcp_engine.search_external_mcp(data.get("query", ""))}
+            except Exception as e:
+                return {"error": str(e), "results": []}
+
+        if action == "coder_team":
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
+                from mika_coder_team import coder_team
+                res = coder_team.execute_task(data.get("goal", "Full development cycle"))
+                return {"status": "completed", "result": res}
+            except Exception as e:
+                return {"error": str(e)}
 
         if action == "mcp_servers":
             try:

@@ -116,6 +116,114 @@ MARKETPLACE_SERVERS = {
         "env": {},
         "transport": "stdio",
         "status": "installed"
+    },
+    "git": {
+        "id": "git",
+        "name": "Git Operations",
+        "category": "Developer Tools",
+        "icon": "🌱",
+        "description": "Read, commit, branch, diff, and inspect Git repositories directly via MCP.",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-git"],
+        "env": {},
+        "transport": "stdio",
+        "status": "ready"
+    },
+    "sequentialthinking": {
+        "id": "sequentialthinking",
+        "name": "Sequential Thinking",
+        "category": "AI Core",
+        "icon": "💡",
+        "description": "Dynamic multi-step chain-of-thought, hypothesis testing, and solution planning.",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-sequentialthinking"],
+        "env": {},
+        "transport": "stdio",
+        "status": "ready"
+    },
+    "chrome-devtools": {
+        "id": "chrome-devtools",
+        "name": "Chrome DevTools MCP",
+        "category": "Developer Tools",
+        "icon": "🌐",
+        "description": "Connect AI agent to live Chrome browser: DOM inspection, network capture, and console evaluation.",
+        "command": "npx",
+        "args": ["-y", "chrome-devtools-mcp"],
+        "env": {},
+        "transport": "stdio",
+        "status": "ready"
+    },
+    "postgres": {
+        "id": "postgres",
+        "name": "PostgreSQL Database",
+        "category": "Database",
+        "icon": "🐘",
+        "description": "Read schemas, run SQL queries, and inspect PostgreSQL databases via MCP.",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"],
+        "env": {},
+        "transport": "stdio",
+        "status": "needs_config"
+    },
+    "slack": {
+        "id": "slack",
+        "name": "Slack Integration",
+        "category": "Productivity",
+        "icon": "💬",
+        "description": "Read channels, send team messages, and manage threads in Slack workspace.",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-slack"],
+        "env": {"SLACK_BOT_TOKEN": ""},
+        "transport": "stdio",
+        "status": "needs_key"
+    },
+    "google-drive": {
+        "id": "google-drive",
+        "name": "Google Drive & Docs",
+        "category": "Productivity",
+        "icon": "📂",
+        "description": "Search, read, create, and format Google Drive files, Google Docs, and Sheets.",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-gdrive"],
+        "env": {},
+        "transport": "stdio",
+        "status": "needs_auth"
+    },
+    "codebase-memory": {
+        "id": "codebase-memory",
+        "name": "Codebase Memory MCP",
+        "category": "Developer Tools",
+        "icon": "🧩",
+        "description": "Local semantic code intelligence, symbol graphs, and architectural memory for AI agents.",
+        "command": "npx",
+        "args": ["-y", "codebase-memory-mcp"],
+        "env": {},
+        "transport": "stdio",
+        "status": "ready"
+    },
+    "scrapling": {
+        "id": "scrapling",
+        "name": "Scrapling Web Crawler",
+        "category": "Automation",
+        "icon": "🕷️",
+        "description": "Fast web scraping and intelligent HTML extraction for AI agents.",
+        "command": "uvx",
+        "args": ["scrapling"],
+        "env": {},
+        "transport": "stdio",
+        "status": "ready"
+    },
+    "worldmonitor": {
+        "id": "worldmonitor",
+        "name": "World Monitor Intelligence",
+        "category": "Research",
+        "icon": "🌍",
+        "description": "Real-time global news aggregation, geopolitical tracking, and situational awareness.",
+        "command": "npx",
+        "args": ["-y", "worldmonitor-mcp"],
+        "env": {},
+        "transport": "stdio",
+        "status": "ready"
     }
 }
 
@@ -168,6 +276,83 @@ class MCPEngine:
             result.append(entry)
         return result
 
+    def search_external_mcp(self, query: str = "") -> List[Dict[str, Any]]:
+        """Searches live GitHub MCP topics and Smithery AI registry, paired dynamically."""
+        results = []
+        q_lower = query.lower().strip()
+        
+        # 1. Local curated marketplace
+        for key, item in MARKETPLACE_SERVERS.items():
+            if not q_lower or q_lower in key or q_lower in item["name"].lower() or q_lower in item["description"].lower():
+                entry = dict(item)
+                entry["source"] = "Curated Catalog"
+                entry["installed"] = key in self.servers
+                results.append(entry)
+
+        # 2. Query live GitHub API for topic:mcp-server
+        try:
+            import urllib.request, urllib.parse
+            gh_query = f"topic:mcp-server {q_lower}".strip()
+            gh_url = f"https://api.github.com/search/repositories?q={urllib.parse.quote(gh_query)}&sort=stars&order=desc&per_page=15"
+            req = urllib.request.Request(gh_url, headers={"User-Agent": "Mika-Agent"})
+            with urllib.request.urlopen(req, timeout=4) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                for repo in data.get("items", []):
+                    rid = repo["name"].lower()
+                    if any(r["id"] == rid for r in results):
+                        continue
+                    results.append({
+                        "id": rid,
+                        "name": repo["full_name"],
+                        "category": "GitHub Open Source",
+                        "icon": "🐙",
+                        "description": f"⭐ {repo.get('stargazers_count', 0)} stars — {repo.get('description', '') or 'Open source MCP server on GitHub.'}",
+                        "command": "npx",
+                        "args": ["-y", repo["html_url"]],
+                        "env": {},
+                        "transport": "stdio",
+                        "status": "ready",
+                        "source": "GitHub",
+                        "url": repo["html_url"],
+                        "installed": rid in self.servers
+                    })
+        except Exception as e:
+            logger.warning(f"GitHub search failed: {e}")
+
+        # 3. Query live Smithery AI Registry
+        try:
+            import urllib.request
+            smithery_url = "https://registry.smithery.ai/servers"
+            req = urllib.request.Request(smithery_url, headers={"User-Agent": "Mika-Agent"})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                for s in data.get("servers", []):
+                    name = s.get("displayName") or s.get("qualifiedName") or ""
+                    desc = s.get("description") or ""
+                    sid = (s.get("qualifiedName") or name).lower().replace("/", "-")
+                    if q_lower and (q_lower not in name.lower() and q_lower not in desc.lower()):
+                        continue
+                    if any(r["id"] == sid for r in results):
+                        continue
+                    results.append({
+                        "id": sid,
+                        "name": name,
+                        "category": "Smithery Registry",
+                        "icon": "⚡",
+                        "description": desc or "Verified server from Smithery AI MCP registry.",
+                        "command": "npx",
+                        "args": ["-y", f"@smithery/cli@{sid}"],
+                        "env": {},
+                        "transport": "stdio",
+                        "status": "ready",
+                        "source": "Smithery AI",
+                        "installed": sid in self.servers
+                    })
+        except Exception as e:
+            logger.warning(f"Smithery search failed: {e}")
+
+        return results
+
     def list_installed(self) -> List[Dict[str, Any]]:
         result = []
         for sid, conf in self.servers.items():
@@ -218,6 +403,21 @@ class MCPEngine:
                 "type": "custom",
                 "url": url
             }
+        elif not config:
+            ext = self.search_external_mcp(server_id)
+            match = next((item for item in ext if item["id"] == server_id), None)
+            if match:
+                self.servers[server_id] = {
+                    "id": server_id,
+                    "name": match["name"],
+                    "command": match["command"],
+                    "args": match["args"],
+                    "env": match.get("env", {}),
+                    "enabled": True,
+                    "type": match.get("source", "external")
+                }
+            else:
+                return {"error": f"Unknown server {server_id} and no config provided"}
         else:
             return {"error": f"Unknown server {server_id} and no config provided"}
 

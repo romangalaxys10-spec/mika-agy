@@ -86,6 +86,25 @@ def run_qa():
         assert data.get("status") == "installed"
         print(f"✅ POST /desk (mcp_install sqlite): 200 OK — Successfully installed SQLite MCP server!")
 
+    # 5. Test POST /desk (mcp_search)
+    post_data = json.dumps({"action": "mcp_search", "query": "memory"}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert "results" in data
+        assert len(data["results"]) > 0
+        print(f"✅ POST /desk (mcp_search): 200 OK — Found {len(data['results'])} matching MCP tools!")
+
+    # 6. Test POST /desk (coder_team autonomous harness)
+    post_data = json.dumps({"action": "coder_team", "goal": "Build robust auth validator with SecretScope"}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data.get("status") == "completed"
+        res = data.get("result", {})
+        assert len(res.get("artifacts", [])) >= 5
+        print(f"✅ POST /desk (coder_team): 200 OK — Coder Team delivered {len(res['artifacts'])} verified artifacts in {res['duration']}s!")
+
     server.shutdown()
     print("🎉 ALL QA TESTS PASSED! ZERO LOAD FAILED OR DISCONNECT ISSUES!")
 

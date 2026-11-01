@@ -39,12 +39,15 @@
         <button type="button" class="preset-btn" data-goal="Подготовь коммерческое предложение и программу туров в Грузию 2027 в Word">📑 Оффер и программа (Word .docx)</button>
         <button type="button" class="preset-btn" data-goal="Проведи исследование рынка туризма и цен в Грузии 2027">🔍 Анализ рынка и цен 2027</button>
         <button type="button" class="preset-btn" data-goal="Собери все материалы проекта Грузия 2027 в организованную папку на Рабочем столе">📁 Организовать проект на Desktop</button>
+        <button type="button" class="preset-btn" data-goal="Спроектируй и разработай full-stack сервис с архитектурным планом, тестами и QA" style="border-color: #a855f7; color: #a855f7;">🚀 Coder Team: Создать проект под ключ</button>
+        <button type="button" class="preset-btn" data-goal="Проведи полный аудит кода, тесты самоисцеления QA и аттестацию Witness" style="border-color: #a855f7; color: #a855f7;">🧪 Coder Team: Архитектурный аудит & QA</button>
       </div>
       <div class="input-row"><textarea id="goal" rows="2" maxlength="4000" data-i18n-placeholder="goalPlaceholder" placeholder="Describe the task. Enter sends, Shift+Enter adds a line" required></textarea>
         <button class="primary" id="submit-goal" disabled data-i18n="submitGoal">Send to phone</button></div>
       <div class="composer-controls">
+        <label class="coder-toggle" title="Autonomous Multi-Agent Coder Team (Plan, Design, Code, QA, Review, Deliver)"><input type="checkbox" id="chk-coder-team" checked> 🧑‍💻 <span>Coder Team Mode</span></label>
         <label class="horizon-toggle" title="AutoAgent & Hermes multi-step milestone autonomous execution"><input type="checkbox" id="chk-long-horizon" checked> ⚡ <span>Long Horizon Mode</span></label>
-        <button type="button" id="btn-open-mcp" class="mcp-toggle-btn">🧩 MCP Marketplace & Tools (<span id="mcp-active-count">8 active</span>)</button>
+        <button type="button" id="btn-open-mcp" class="mcp-toggle-btn">🧩 MCP Marketplace & Tools (<span id="mcp-active-count">18 active</span>)</button>
       </div>
     </form>
     <div class="columns">
@@ -69,6 +72,50 @@
             <button class="primary" id="submit-reply"></button>
           </form>
           <div id="task-notes"></div>
+          <div id="coder-board" class="coder-board" hidden>
+            <div class="coder-board-header">
+              <strong>🧑‍💻 Coder Team Live Multi-Agent Board</strong>
+              <span id="coder-phase-badge" class="badge">PLAN</span>
+            </div>
+            <div class="coder-agents-grid">
+              <div class="coder-agent-card active" id="agent-architect">
+                <div class="agent-icon">🏗️</div>
+                <div class="agent-name">Lead Architect</div>
+                <div class="agent-task">PLAN.md Blueprint</div>
+                <span class="agent-status">Active</span>
+              </div>
+              <div class="coder-agent-card" id="agent-designer">
+                <div class="agent-icon">📐</div>
+                <div class="agent-name">System Designer</div>
+                <div class="agent-task">DESIGN.md Contracts</div>
+                <span class="agent-status">Pending</span>
+              </div>
+              <div class="coder-agent-card" id="agent-engineer">
+                <div class="agent-icon">💻</div>
+                <div class="agent-name">Code Engineer</div>
+                <div class="agent-task">Atomic Code Craft</div>
+                <span class="agent-status">Pending</span>
+              </div>
+              <div class="coder-agent-card" id="agent-qa">
+                <div class="agent-icon">🧪</div>
+                <div class="agent-name">QA Specialist</div>
+                <div class="agent-task">Self-Healing Tests</div>
+                <span class="agent-status">Pending</span>
+              </div>
+              <div class="coder-agent-card" id="agent-reviewer">
+                <div class="agent-icon">🛡️</div>
+                <div class="agent-name">Security Reviewer</div>
+                <div class="agent-task">SecretScope Audit</div>
+                <span class="agent-status">Pending</span>
+              </div>
+              <div class="coder-agent-card" id="agent-release">
+                <div class="agent-icon">📦</div>
+                <div class="agent-name">Release Manager</div>
+                <div class="agent-task">Witness Attestation</div>
+                <span class="agent-status">Pending</span>
+              </div>
+            </div>
+          </div>
           <div id="task-artifacts" hidden>
             <strong>📁 Созданные материалы и файлы:</strong>
             <div id="artifacts-list" class="artifacts-grid"></div>
@@ -98,6 +145,11 @@
           <button type="button" class="mcp-tab-btn active" id="tab-mcp-market">🏪 Каталог Marketplace</button>
           <button type="button" class="mcp-tab-btn" id="tab-mcp-installed">⚙️ Установленные серверы</button>
           <button type="button" class="mcp-tab-btn" id="tab-mcp-manual">➕ Ручная установка (URL / NPX / UVX)</button>
+        </div>
+
+        <div class="mcp-search-row">
+          <input type="text" id="mcp-search-query" placeholder="🔍 Поиск MCP серверов на GitHub (topic:mcp-server), Smithery AI или в каталоге...">
+          <button type="button" id="btn-sync-github" class="action-btn">🐙 Поиск на GitHub</button>
         </div>
 
         <div id="mcp-view-market">

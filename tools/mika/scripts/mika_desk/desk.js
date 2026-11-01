@@ -529,12 +529,73 @@ $("compose").addEventListener("submit", event => {
   const goal = $("goal").value.trim();
   if (!online || !goal) return;
   const isHorizon = $("chk-long-horizon")?.checked;
+  const isCoder = $("chk-coder-team")?.checked;
   work(async () => {
     const task = await call("run", {goal});
     choose(task);
     $("goal").value = "";
-    message("notice", t("taskAccepted") + (isHorizon ? " [⚡ Long Horizon Loop active]" : ""));
-    if (isHorizon && task?.task_id) {
+    
+    let notice = t("taskAccepted");
+    if (isCoder) notice += " [🧑‍💻 Coder Team Active]";
+    else if (isHorizon) notice += " [⚡ Long Horizon Loop Active]";
+    message("notice", notice);
+
+    if (isCoder && $("coder-board")) {
+      $("coder-board").hidden = false;
+      if ($("coder-phase-badge")) $("coder-phase-badge").textContent = "DISPATCHING";
+      
+      const roles = ["architect", "designer", "engineer", "qa", "reviewer", "release"];
+      let stepIdx = 0;
+      const stepTimer = setInterval(() => {
+        if (stepIdx < roles.length) {
+          const roleId = roles[stepIdx];
+          document.querySelectorAll(".coder-agent-card").forEach(c => c.classList.remove("active"));
+          const activeCard = $("agent-" + roleId);
+          if (activeCard) {
+            activeCard.classList.add("active");
+            const st = activeCard.querySelector(".agent-status");
+            if (st) st.textContent = "Working...";
+          }
+          if ($("coder-phase-badge")) $("coder-phase-badge").textContent = roleId.toUpperCase();
+          stepIdx++;
+        }
+      }, 400);
+
+      call("coder_team", {task_id: task?.task_id || "mcp-coder", goal}).then(res => {
+        clearInterval(stepTimer);
+        if ($("coder-phase-badge")) $("coder-phase-badge").textContent = "DELIVERED";
+        document.querySelectorAll(".coder-agent-card").forEach(c => {
+          c.classList.remove("active");
+          c.classList.add("done");
+          const st = c.querySelector(".agent-status");
+          if (st) st.textContent = "Done";
+        });
+        
+        const arts = res?.result?.artifacts || [];
+        if (arts.length && $("task-artifacts") && $("artifacts-list")) {
+          $("task-artifacts").hidden = false;
+          $("artifacts-list").replaceChildren();
+          for (const art of arts) {
+            const icon = art.type === "markdown" ? "📑 " : art.type === "json" ? "🛡️ " : "💻 ";
+            const artBtn = element("button", icon + art.name, "artifact-btn");
+            artBtn.type = "button";
+            artBtn.title = (art.title || "Open deliverable") + " • " + art.path;
+            artBtn.addEventListener("click", () => {
+              work(async () => {
+                await call("open_file", {path: art.path});
+                message("notice", "Opened " + art.name + " on macOS!");
+              });
+            });
+            $("artifacts-list").append(artBtn);
+          }
+        }
+        message("notice", `Coder Team delivered ${arts.length} verified artifacts!`);
+        refresh();
+      }).catch(err => {
+        clearInterval(stepTimer);
+        message("error", "Coder Team error: " + (err.message || err));
+      });
+    } else if (isHorizon && task?.task_id) {
       fetch("http://127.0.0.1:8765/api/v1/tasks/" + task.task_id + "/horizon", {
         method: "POST",
         headers: {"Content-Type": "application/json"}
@@ -608,6 +669,50 @@ function showMcpTab(tab) {
   if (tab === "installed") loadMcpInstalled();
 }
 
+function renderMcpCards(list) {
+  const grid = $("mcp-market-grid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  if (!list.length) {
+    grid.innerHTML = '<p class="hint">Серверы не найдены. Попробуйте другой запрос или ручную установку.</p>';
+    return;
+  }
+  list.forEach(srv => {
+    const card = document.createElement("div");
+    card.className = "mcp-card";
+    card.innerHTML = `
+      <div class="mcp-card-top">
+        <span class="mcp-icon">${srv.icon || '🧩'}</span>
+        <div>
+          <div class="mcp-card-title">${srv.name}</div>
+          <div class="mcp-card-desc">${srv.description}</div>
+        </div>
+      </div>
+      <div class="mcp-card-actions">
+        <span class="mcp-badge ${srv.installed ? 'active' : ''}">${srv.installed ? 'Installed' : (srv.source || srv.category)}</span>
+        <button type="button" class="mcp-action-btn ${srv.installed ? 'uninstall' : 'install'}" data-id="${srv.id}">
+          ${srv.installed ? 'Uninstall' : 'Install'}
+        </button>
+      </div>
+    `;
+    card.querySelector("button").onclick = async () => {
+      const action = srv.installed ? "mcp_uninstall" : "mcp_install";
+      try {
+        await call(action, {id: srv.id});
+      } catch (_) {
+        await fetch(`http://127.0.0.1:8765/api/v1/mcp/${srv.installed ? 'uninstall' : 'install'}`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({id: srv.id})
+        });
+      }
+      loadMcpMarket();
+      updateMcpBadge();
+    };
+    grid.appendChild(card);
+  });
+}
+
 async function loadMcpMarket() {
   const grid = $("mcp-market-grid");
   if (!grid) return;
@@ -618,43 +723,21 @@ async function loadMcpMarket() {
     } catch (_) {
       res = await fetch("http://127.0.0.1:8765/api/v1/mcp/market").then(r => r.json());
     }
-    grid.innerHTML = "";
-    (res.marketplace || []).forEach(srv => {
-      const card = document.createElement("div");
-      card.className = "mcp-card";
-      card.innerHTML = `
-        <div class="mcp-card-top">
-          <span class="mcp-icon">${srv.icon || '🧩'}</span>
-          <div>
-            <div class="mcp-card-title">${srv.name}</div>
-            <div class="mcp-card-desc">${srv.description}</div>
-          </div>
-        </div>
-        <div class="mcp-card-actions">
-          <span class="mcp-badge ${srv.installed ? 'active' : ''}">${srv.installed ? 'Installed' : srv.category}</span>
-          <button type="button" class="mcp-action-btn ${srv.installed ? 'uninstall' : 'install'}" data-id="${srv.id}">
-            ${srv.installed ? 'Uninstall' : 'Install'}
-          </button>
-        </div>
-      `;
-      card.querySelector("button").onclick = async () => {
-        const action = srv.installed ? "mcp_uninstall" : "mcp_install";
-        try {
-          await call(action, {id: srv.id});
-        } catch (_) {
-          await fetch(`http://127.0.0.1:8765/api/v1/mcp/${srv.installed ? 'uninstall' : 'install'}`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({id: srv.id})
-          });
-        }
-        loadMcpMarket();
-        updateMcpBadge();
-      };
-      grid.appendChild(card);
-    });
+    renderMcpCards(res.marketplace || []);
   } catch (e) {
     grid.innerHTML = `<p class="hint">Cannot reach MCP service: ${e.message}</p>`;
+  }
+}
+
+async function searchMcpMarket(query) {
+  const grid = $("mcp-market-grid");
+  if (!grid) return;
+  grid.innerHTML = '<p class="hint">🔍 Поиск по GitHub & Smithery MCP источникам...</p>';
+  try {
+    const res = await call("mcp_search", {query});
+    renderMcpCards(res.results || []);
+  } catch (e) {
+    grid.innerHTML = `<p class="hint">Ошибка поиска: ${e.message}</p>`;
   }
 }
 
@@ -746,6 +829,18 @@ $("mcp-manual-form")?.addEventListener("submit", async (e) => {
   message("notice", `MCP server '${id}' installed successfully!`);
   showMcpTab("installed");
   updateMcpBadge();
+});
+
+$("btn-sync-github")?.addEventListener("click", () => {
+  const q = $("mcp-search-query")?.value.trim() || "topic:mcp-server";
+  searchMcpMarket(q);
+});
+
+$("mcp-search-query")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    searchMcpMarket(e.target.value.trim() || "topic:mcp-server");
+  }
 });
 
 render();

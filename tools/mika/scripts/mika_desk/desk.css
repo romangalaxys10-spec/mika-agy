@@ -158,6 +158,25 @@ textarea::placeholder { color: var(--muted); opacity: 1; }
 .composer-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
 .horizon-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--ink); user-select: none; }
 .horizon-toggle input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--action); cursor: pointer; }
+.coder-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--action); user-select: none; }
+.coder-toggle input[type="checkbox"] { width: 16px; height: 16px; accent-color: #a855f7; cursor: pointer; }
+
+/* Coder Team Multi-Agent Board */
+.coder-board { margin-top: 18px; padding: 16px; background: rgba(168, 85, 247, 0.06); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 14px; }
+.coder-board-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.coder-board-header strong { font-size: 14px; color: #a855f7; display: flex; align-items: center; gap: 8px; }
+.coder-agents-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.coder-agent-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: all 0.2s ease; }
+.coder-agent-card.active { border-color: #a855f7; box-shadow: 0 0 10px rgba(168, 85, 247, 0.2); }
+.agent-icon { font-size: 24px; line-height: 1; margin-bottom: 4px; }
+.agent-name { font-size: 12px; font-weight: 700; color: var(--ink); }
+.agent-task { font-size: 10px; color: var(--muted); }
+.agent-status { font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; background: var(--fill); color: var(--muted); margin-top: 4px; }
+.coder-agent-card.active .agent-status { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+.coder-agent-card.done .agent-status { background: var(--success-soft); color: var(--success); }
+
+.mcp-search-row { display: flex; gap: 10px; margin-bottom: 16px; }
+.mcp-search-row input { flex: 1; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-family: inherit; font-size: 13px; }
 .mcp-toggle-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; background: var(--fill); border: 1px solid var(--line); border-radius: 8px; color: var(--ink); cursor: pointer; transition: all 0.15s ease; }
 .mcp-toggle-btn:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--action); }
 
