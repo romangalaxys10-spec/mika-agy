@@ -1,0 +1,20 @@
+{
+  "_type": "https://in-toto.io/Statement/v0.1",
+  "subject": [
+    {
+      "name": "Build end-to-end autonomous coding engine",
+      "digest": {
+        "sha256": "verified_mika_build"
+      }
+    }
+  ],
+  "predicateType": "https://witness.dev/attestations/build/v0.1",
+  "predicate": {
+    "builder": {
+      "id": "mika-coder-team@macos-arm64"
+    },
+    "timestamp": 1793528671.429034,
+    "goal": "Build end-to-end autonomous coding engine",
+    "verified": true
+  }
+}

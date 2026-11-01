@@ -32,8 +32,20 @@
     <p id="notice" class="notice" role="status" hidden></p>
     <form id="compose" class="panel composer">
       <label for="goal" data-i18n="newTask">New task</label>
+      <div class="employee-presets">
+        <span class="preset-label">🐱 Employee Skills:</span>
+        <button type="button" class="preset-btn" data-goal="Создай презентацию туров в Грузию 2027 в PowerPoint и проведи со мной брейншторм">📽️ Презентация (PowerPoint)</button>
+        <button type="button" class="preset-btn" data-goal="Рассчитай финансовую модель и бюджет туров в Грузию 2027 в таблице Excel">📊 Бюджет и маржа (Excel .xlsx)</button>
+        <button type="button" class="preset-btn" data-goal="Подготовь коммерческое предложение и программу туров в Грузию 2027 в Word">📑 Оффер и программа (Word .docx)</button>
+        <button type="button" class="preset-btn" data-goal="Проведи исследование рынка туризма и цен в Грузии 2027">🔍 Анализ рынка и цен 2027</button>
+        <button type="button" class="preset-btn" data-goal="Собери все материалы проекта Грузия 2027 в организованную папку на Рабочем столе">📁 Организовать проект на Desktop</button>
+      </div>
       <div class="input-row"><textarea id="goal" rows="2" maxlength="4000" data-i18n-placeholder="goalPlaceholder" placeholder="Describe the task. Enter sends, Shift+Enter adds a line" required></textarea>
         <button class="primary" id="submit-goal" disabled data-i18n="submitGoal">Send to phone</button></div>
+      <div class="composer-controls">
+        <label class="horizon-toggle" title="AutoAgent & Hermes multi-step milestone autonomous execution"><input type="checkbox" id="chk-long-horizon" checked> ⚡ <span>Long Horizon Mode</span></label>
+        <button type="button" id="btn-open-mcp" class="mcp-toggle-btn">🧩 MCP Marketplace & Tools (<span id="mcp-active-count">8 active</span>)</button>
+      </div>
     </form>
     <div class="columns">
       <section class="panel inbox" aria-labelledby="inbox-title">
@@ -57,6 +69,14 @@
             <button class="primary" id="submit-reply"></button>
           </form>
           <div id="task-notes"></div>
+          <div id="task-artifacts" hidden>
+            <strong>📁 Созданные материалы и файлы:</strong>
+            <div id="artifacts-list" class="artifacts-grid"></div>
+          </div>
+          <div id="task-actions" class="task-actions-row" hidden>
+            <button id="btn-rerun" type="button" class="action-btn">🔄 Повторить задачу</button>
+            <button id="btn-modify" type="button" class="action-btn">✏️ Изменить и перезапустить</button>
+          </div>
           <dl id="task-info" hidden>
             <div><dt data-i18n="taskGoal">Goal</dt><dd id="task-goal"></dd></div>
             <div><dt data-i18n="taskId">Task ID</dt><dd id="task-id"></dd></div>
@@ -66,5 +86,55 @@
       </section>
     </div>
   </main>
+
+  <div id="mcp-modal" class="mcp-modal" hidden>
+    <div class="mcp-modal-content">
+      <div class="mcp-modal-header">
+        <h3>🧩 Model Context Protocol (MCP) Hub</h3>
+        <button type="button" id="btn-close-mcp" class="action-btn">✕ Закрыть</button>
+      </div>
+      <div class="mcp-modal-body">
+        <div class="mcp-tabs">
+          <button type="button" class="mcp-tab-btn active" id="tab-mcp-market">🏪 Каталог Marketplace</button>
+          <button type="button" class="mcp-tab-btn" id="tab-mcp-installed">⚙️ Установленные серверы</button>
+          <button type="button" class="mcp-tab-btn" id="tab-mcp-manual">➕ Ручная установка (URL / NPX / UVX)</button>
+        </div>
+
+        <div id="mcp-view-market">
+          <div id="mcp-market-grid" class="mcp-grid">
+            <p class="hint">Загрузка каталога MCP...</p>
+          </div>
+        </div>
+
+        <div id="mcp-view-installed" hidden>
+          <div id="mcp-installed-grid" class="mcp-grid">
+            <p class="hint">Нет установленных серверов</p>
+          </div>
+        </div>
+
+        <div id="mcp-view-manual" hidden>
+          <form id="mcp-manual-form" class="manual-install-form">
+            <div class="manual-field">
+              <label for="mcp-server-id">Идентификатор сервера (ID):</label>
+              <input type="text" id="mcp-server-id" placeholder="my-mcp-server" required>
+            </div>
+            <div class="manual-field">
+              <label for="mcp-server-url">URL репозитория или пакета (GitHub, NPM, PyPI):</label>
+              <input type="text" id="mcp-server-url" placeholder="https://github.com/modelcontextprotocol/servers/tree/main/src/fetch">
+            </div>
+            <div class="manual-field">
+              <label for="mcp-server-cmd">Команда запуска (Command & Arguments):</label>
+              <input type="text" id="mcp-server-cmd" placeholder="npx -y @modelcontextprotocol/server-fetch">
+            </div>
+            <div class="manual-field">
+              <label for="mcp-server-env">Переменные окружения (JSON):</label>
+              <input type="text" id="mcp-server-env" placeholder='{"API_KEY": "..."}'>
+            </div>
+            <button type="submit" class="primary">📦 Установить MCP Сервер</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

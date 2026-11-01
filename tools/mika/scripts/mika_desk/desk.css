@@ -137,3 +137,55 @@ textarea::placeholder { color: var(--muted); opacity: 1; }
   .refresh { align-items: flex-end; flex-direction: column-reverse; gap: 4px; }
   .refresh button { white-space: nowrap; }
 }
+
+/* Mika Employee Suite & History Additions */
+.employee-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 16px; }
+.preset-label { font-size: 13px; font-weight: 600; color: var(--muted); margin-right: 4px; }
+.preset-btn { font-size: 13px; padding: 6px 12px; border-radius: 20px; background: var(--fill); border: 1px solid var(--line); color: var(--ink); transition: all 0.15s ease; }
+.preset-btn:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--action); }
+
+#task-artifacts { margin-top: 20px; padding: 14px; background: var(--fill); border-radius: 12px; border: 1px solid var(--line); }
+#task-artifacts strong { display: block; font-size: 13px; margin-bottom: 10px; color: var(--ink); }
+.artifacts-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.artifact-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600; background: var(--surface); border: 1px solid var(--outline); border-radius: 8px; color: var(--ink); transition: all 0.15s ease; cursor: pointer; }
+.artifact-btn:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--action); transform: translateY(-1px); }
+
+.task-actions-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.action-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600; background: var(--fill); border: 1px solid var(--line); border-radius: 8px; color: var(--ink); cursor: pointer; transition: all 0.15s ease; }
+.action-btn:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--action); }
+
+/* Long Horizon & MCP Marketplace Additions */
+.composer-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.horizon-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--ink); user-select: none; }
+.horizon-toggle input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--action); cursor: pointer; }
+.mcp-toggle-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; background: var(--fill); border: 1px solid var(--line); border-radius: 8px; color: var(--ink); cursor: pointer; transition: all 0.15s ease; }
+.mcp-toggle-btn:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--action); }
+
+/* Modal Styles */
+.mcp-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 999; padding: 20px; }
+.mcp-modal[hidden] { display: none !important; }
+.mcp-modal-content { background: var(--surface); width: 100%; max-width: 760px; max-height: 85vh; border-radius: 16px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15); border: 1px solid var(--line); display: flex; flex-direction: column; overflow: hidden; }
+.mcp-modal-header { padding: 18px 24px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+.mcp-modal-header h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--ink); }
+.mcp-modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+.mcp-tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.mcp-tab-btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.mcp-tab-btn.active { background: var(--accent-soft); color: var(--action); }
+.mcp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.mcp-card { background: var(--fill); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; }
+.mcp-card-top { display: flex; align-items: flex-start; gap: 12px; }
+.mcp-icon { font-size: 28px; line-height: 1; }
+.mcp-card-title { font-size: 15px; font-weight: 700; color: var(--ink); margin: 0 0 4px; }
+.mcp-card-desc { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 0; }
+.mcp-card-actions { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); }
+.mcp-badge { font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; background: var(--surface); color: var(--muted); }
+.mcp-badge.active { background: var(--accent-soft); color: var(--action); }
+.mcp-action-btn { padding: 6px 14px; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); }
+.mcp-action-btn.install { background: var(--action); color: #fff; border-color: var(--action); }
+.mcp-action-btn.uninstall { color: var(--bad); }
+
+.manual-install-form { display: flex; flex-direction: column; gap: 14px; }
+.manual-field { display: flex; flex-direction: column; gap: 6px; }
+.manual-field label { font-size: 12px; font-weight: 600; color: var(--ink); }
+.manual-field input, .manual-field textarea { font-family: inherit; font-size: 13px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+

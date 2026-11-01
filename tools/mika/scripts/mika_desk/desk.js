@@ -265,6 +265,49 @@ function render() {
   }
   const steers = {received: t("steerReceived"), joined: t("steerJoined"), not_applied: t("steerNotApplied")};
   if (task.steers?.length) fact(t("steers"), task.steers.map((s, i) => (i + 1) + ". " + (steers[s.state] || s.state)).join("\n"));
+
+  const artifactsEl = $("task-artifacts");
+  const artifactsList = $("artifacts-list");
+  const actionsEl = $("task-actions");
+  if (artifactsEl && artifactsList) {
+    const arts = task.artifacts || [];
+    artifactsEl.hidden = arts.length === 0;
+    artifactsList.replaceChildren();
+    for (const art of arts) {
+      const icon = art.type === "pptx" ? "📽️ " : art.type === "xlsx" ? "📊 " : art.type === "docx" ? "📑 " : art.type === "folder" ? "📁 " : "📄 ";
+      const artBtn = element("button", icon + art.name, "artifact-btn");
+      artBtn.type = "button";
+      artBtn.title = (art.title || "Open deliverable") + " • " + art.path;
+      artBtn.addEventListener("click", () => {
+        work(async () => {
+          await call("open_file", {path: art.path});
+          message("notice", "Opened " + art.name + " on macOS!");
+        });
+      });
+      artifactsList.append(artBtn);
+    }
+  }
+
+  if (actionsEl) {
+    actionsEl.hidden = false;
+    $("btn-rerun").onclick = () => {
+      if (!task.goal) return;
+      work(async () => {
+        const newTask = await call("run", {goal: task.goal});
+        choose(newTask);
+        message("notice", "Re-running task: " + task.goal);
+        await refresh();
+      });
+    };
+    $("btn-modify").onclick = () => {
+      if (!task.goal) return;
+      $("goal").value = task.goal;
+      $("goal").focus();
+      if ($("submit-goal")) $("submit-goal").disabled = false;
+      window.scrollTo({top: 0, behavior: "smooth"});
+      message("notice", "Goal copied to composer. Edit and submit!");
+    };
+  }
   if (!action) return;
   $("respond").dataset.action = action;
   $("reply-label").textContent = t(action === "answer" ? "answerLabel" : "steerLabel");
@@ -284,20 +327,38 @@ function render() {
 
 async function call(action, fields = {}) {
   const writing = !["overview", "select", "status", "watch"].includes(action);
+  const maxAttempts = writing ? 2 : 4;
+  let lastError = null;
   let response, data;
-  try {
-    response = await fetch("/desk", {
-      method: "POST", headers: {"Content-Type": "application/json", "X-Mika-Desk": ticket || ""},
-      body: JSON.stringify({action, ...fields}),
-    });
-    if (response.headers.get("Content-Type")?.includes("application/json")) data = await response.json();
-  } catch {
-    throw {code: writing ? "outcome_unknown" : "desk_offline"};
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      response = await fetch("/desk", {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "X-Mika-Desk": ticket || ""},
+        body: JSON.stringify({action, ...fields}),
+      });
+      if (response.headers.get("Content-Type")?.includes("application/json")) {
+        data = await response.json();
+      }
+      if (data?.error) throw data.error;
+      if (response.ok && data) {
+        return data;
+      }
+      if (response.status === 403) throw {code: "session"};
+    } catch (err) {
+      if (err?.code === "session" || err?.error) throw err;
+      lastError = err;
+    }
+    if (attempt < maxAttempts) {
+      await new Promise(r => setTimeout(r, 200 * attempt));
+    }
   }
-  if (data?.error) throw data.error;
-  if (!response.ok || !data) {
-    if (response.status === 403) throw {code: "session"};
-    throw {code: writing && (response.ok || response.status >= 500) ? "outcome_unknown" : "desk_offline"};
+
+  if (lastError?.code) throw lastError;
+  if (!response || !response.ok || !data) {
+    if (response?.status === 403) throw {code: "session"};
+    throw {code: writing && (response?.ok || response?.status >= 500) ? "outcome_unknown" : "desk_offline"};
   }
   return data;
 }
@@ -381,6 +442,12 @@ function showProblem(e) {
   else if (e.code === "device_offline" || e.code === "device_selection") summary = t("waitPhone");
   connectionSummary(picking ? "choose" : "retry", summary);
   $("device").textContent = t("toReread");
+  if (e.code === "desk_offline") {
+    retryDelay = 1000;
+    connectionSummary("retry", "Reconnecting to local desk...");
+    $("connection").textContent = "Reconnecting...";
+    return;
+  }
   const detail = errors[e.code] ? t(errors[e.code]) : e.message || t("errFallback");
   if (e.code === "outcome_unknown") writeWarning = detail;
   message("error", [writeWarning !== detail && writeWarning, detail, overview && t("keptList")].filter(Boolean).join(" "));
@@ -461,11 +528,18 @@ $("compose").addEventListener("submit", event => {
   event.preventDefault();
   const goal = $("goal").value.trim();
   if (!online || !goal) return;
+  const isHorizon = $("chk-long-horizon")?.checked;
   work(async () => {
     const task = await call("run", {goal});
     choose(task);
     $("goal").value = "";
-    message("notice", t("taskAccepted"));
+    message("notice", t("taskAccepted") + (isHorizon ? " [⚡ Long Horizon Loop active]" : ""));
+    if (isHorizon && task?.task_id) {
+      fetch("http://127.0.0.1:8765/api/v1/tasks/" + task.task_id + "/horizon", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"}
+      }).catch(() => {});
+    }
     await refresh();
   });
 });
@@ -493,5 +567,161 @@ document.addEventListener("visibilitychange", () => {
   invalidateUpdate();
   scheduleUpdate(true);
 });
+
+document.querySelectorAll(".preset-btn").forEach(btn => {
+  btn.onclick = () => {
+    const goal = btn.dataset.goal;
+    if (goal) {
+      $("goal").value = goal;
+      $("goal").focus();
+      if ($("submit-goal")) $("submit-goal").disabled = false;
+      message("notice", "Preset selected! Click 'Send to phone' or press Enter.");
+    }
+  };
+});
+
+// MCP Marketplace & Modal Logic
+const mcpModal = $("mcp-modal");
+$("btn-open-mcp")?.addEventListener("click", () => {
+  if (mcpModal) mcpModal.hidden = false;
+  loadMcpMarket();
+});
+$("btn-close-mcp")?.addEventListener("click", () => {
+  if (mcpModal) mcpModal.hidden = true;
+});
+mcpModal?.addEventListener("click", (e) => {
+  if (e.target === mcpModal) mcpModal.hidden = true;
+});
+
+$("tab-mcp-market")?.addEventListener("click", () => showMcpTab("market"));
+$("tab-mcp-installed")?.addEventListener("click", () => showMcpTab("installed"));
+$("tab-mcp-manual")?.addEventListener("click", () => showMcpTab("manual"));
+
+function showMcpTab(tab) {
+  $("tab-mcp-market")?.classList.toggle("active", tab === "market");
+  $("tab-mcp-installed")?.classList.toggle("active", tab === "installed");
+  $("tab-mcp-manual")?.classList.toggle("active", tab === "manual");
+  if ($("mcp-view-market")) $("mcp-view-market").hidden = tab !== "market";
+  if ($("mcp-view-installed")) $("mcp-view-installed").hidden = tab !== "installed";
+  if ($("mcp-view-manual")) $("mcp-view-manual").hidden = tab !== "manual";
+  if (tab === "market") loadMcpMarket();
+  if (tab === "installed") loadMcpInstalled();
+}
+
+async function loadMcpMarket() {
+  const grid = $("mcp-market-grid");
+  if (!grid) return;
+  try {
+    const res = await fetch("http://127.0.0.1:8765/api/v1/mcp/market").then(r => r.json());
+    grid.innerHTML = "";
+    (res.marketplace || []).forEach(srv => {
+      const card = document.createElement("div");
+      card.className = "mcp-card";
+      card.innerHTML = `
+        <div class="mcp-card-top">
+          <span class="mcp-icon">${srv.icon || '🧩'}</span>
+          <div>
+            <div class="mcp-card-title">${srv.name}</div>
+            <div class="mcp-card-desc">${srv.description}</div>
+          </div>
+        </div>
+        <div class="mcp-card-actions">
+          <span class="mcp-badge ${srv.installed ? 'active' : ''}">${srv.installed ? 'Installed' : srv.category}</span>
+          <button type="button" class="mcp-action-btn ${srv.installed ? 'uninstall' : 'install'}" data-id="${srv.id}">
+            ${srv.installed ? 'Uninstall' : 'Install'}
+          </button>
+        </div>
+      `;
+      card.querySelector("button").onclick = async () => {
+        const action = srv.installed ? "uninstall" : "install";
+        await fetch(`http://127.0.0.1:8765/api/v1/mcp/${action}`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({id: srv.id})
+        });
+        loadMcpMarket();
+        updateMcpBadge();
+      };
+      grid.appendChild(card);
+    });
+  } catch (e) {
+    grid.innerHTML = `<p class="hint">Cannot reach MCP service: ${e.message}</p>`;
+  }
+}
+
+async function loadMcpInstalled() {
+  const grid = $("mcp-installed-grid");
+  if (!grid) return;
+  try {
+    const res = await fetch("http://127.0.0.1:8765/api/v1/mcp/servers").then(r => r.json());
+    grid.innerHTML = "";
+    const list = res.servers || [];
+    if (!list.length) {
+      grid.innerHTML = '<p class="hint">No installed MCP servers.</p>';
+      return;
+    }
+    list.forEach(srv => {
+      const card = document.createElement("div");
+      card.className = "mcp-card";
+      card.innerHTML = `
+        <div class="mcp-card-top">
+          <span class="mcp-icon">⚙️</span>
+          <div>
+            <div class="mcp-card-title">${srv.name || srv.id}</div>
+            <div class="mcp-card-desc">Command: ${srv.command} ${(srv.args || []).join(' ')}</div>
+          </div>
+        </div>
+        <div class="mcp-card-actions">
+          <span class="mcp-badge ${srv.enabled ? 'active' : ''}">${srv.enabled ? 'Enabled' : 'Disabled'}</span>
+          <button type="button" class="mcp-action-btn uninstall" data-id="${srv.id}">Remove</button>
+        </div>
+      `;
+      card.querySelector("button").onclick = async () => {
+        await fetch("http://127.0.0.1:8765/api/v1/mcp/uninstall", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({id: srv.id})
+        });
+        loadMcpInstalled();
+        updateMcpBadge();
+      };
+      grid.appendChild(card);
+    });
+  } catch (e) {
+    grid.innerHTML = `<p class="hint">Error: ${e.message}</p>`;
+  }
+}
+
+async function updateMcpBadge() {
+  try {
+    const res = await fetch("http://127.0.0.1:8765/api/v1/mcp/servers").then(r => r.json());
+    const count = (res.servers || []).filter(s => s.enabled).length;
+    if ($("mcp-active-count")) $("mcp-active-count").textContent = `${count} active`;
+  } catch (_) {}
+}
+
+$("mcp-manual-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = $("mcp-server-id").value.trim();
+  const url = $("mcp-server-url").value.trim();
+  const cmd = $("mcp-server-cmd").value.trim();
+  let env = {};
+  try {
+    const envStr = $("mcp-server-env").value.trim();
+    if (envStr) env = JSON.parse(envStr);
+  } catch (_) {}
+
+  await fetch("http://127.0.0.1:8765/api/v1/mcp/install", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({id, config: {name: id, url, command: cmd, env}})
+  });
+  message("notice", `MCP server '${id}' installed successfully!`);
+  showMcpTab("installed");
+  updateMcpBadge();
+});
+
 render();
 scheduleUpdate(true);
+updateMcpBadge();
+

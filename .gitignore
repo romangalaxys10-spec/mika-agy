@@ -21,3 +21,20 @@ CLAUDE.md
 __pycache__/
 *.py[cod]
 *.egg-info/
+
+# Security & Credentials - ZERO LEAK GUARANTEE
+token
+token*
+*.token
+*.key
+*.pem
+credentials*
+.env*
+task_history.json
+mcp_servers.json
+*.log
+mac-app/build/
+*.zip
+.gemini/
+transcript*
+

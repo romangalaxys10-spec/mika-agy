@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Грузия 2027 · Авторские Туры</title>
+    <style>
+        :root {
+            --bg: #090d16;
+            --surface: #131b2e;
+            --card: #1c2744;
+            --wine: #991b1b;
+            --wine-glow: rgba(153, 27, 27, 0.4);
+            --gold: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+            --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg);
+            color: var(--text-main);
+            font-family: var(--font);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 30px 20px;
+        }
+        .deck-container {
+            max-width: 1080px;
+            width: 100%;
+        }
+        .deck-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .cat-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--gold);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            background: var(--card);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn:hover { background: #253358; border-color: var(--gold); }
+        .slide {
+            display: none;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 40px;
+            min-height: 540px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .slide.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        h1 { font-size: 42px; font-weight: 800; margin-bottom: 16px; color: var(--text-main); }
+        h2 { font-size: 28px; font-weight: 700; margin-bottom: 24px; color: var(--gold); }
+        .subtitle { font-size: 18px; color: var(--text-muted); line-height: 1.6; margin-bottom: 30px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 20px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 20px; }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 22px;
+            transition: transform 0.2s;
+        }
+        .card:hover { transform: translateY(-4px); border-color: rgba(245, 158, 11, 0.4); }
+        .card h3 { font-size: 18px; margin-bottom: 12px; color: var(--text-main); }
+        .card ul { list-style: none; }
+        .card li { color: var(--text-muted); font-size: 13.5px; margin-bottom: 8px; line-height: 1.5; position: relative; padding-left: 18px; }
+        .card li::before { content: "•"; position: absolute; left: 0; color: var(--gold); font-weight: bold; }
+        .card-badge { font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--gold); margin-bottom: 8px; display: inline-block; }
+        .slide-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 30px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .accent-wine { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="deck-container">
+        <div class="deck-header">
+            <div class="cat-badge">🐱 Mika AGY Presentation Studio · Создано для Катеньки</div>
+            <div class="controls">
+                <button class="btn" onclick="prevSlide()">◀ Назад</button>
+                <span id="slideIndicator" style="display:flex; align-items:center; font-weight:600; font-size:14px; color:var(--gold); padding:0 10px;">Слайд 1 из 6</span>
+                <button class="btn" onclick="nextSlide()">Вперед ▶</button>
+            </div>
+        </div>
+
+        <!-- SLIDE 1 -->
+        <div class="slide active">
+            <span class="card-badge">ЭКСКЛЮЗИВНАЯ КОЛЛЕКЦИЯ 2027 🇬🇪</span>
+            <h1>Грузия 2027: Авторские Туры</h1>
+            <p class="subtitle">Основная концепция: <b>🍷 Винно-гастрономический VIP тур (Кахетия, Сигнахи, Тбилиси)</b><br/>От старинных виноделен Алазанской долины до панорам Казбеги и башен высокогорной Сванетии.</p>
+            <div style="background: rgba(153,27,27,0.15); border: 1px solid var(--wine); padding: 20px; border-radius: 12px; max-width: 600px;">
+                <p style="font-size: 14px; color: #fca5a5;">✨ Презентация полностью сгенерирована AI-ассистентом Mika (AGY Brain) с глубоким погружением в культуру, географию и логистику Грузии.</p>
+            </div>
+            <div class="slide-footer">
+                <span>Используйте стрелки ◀ ▶ на клавиатуре или кнопки вверху</span>
+                <span>Mika Desktop 2026</span>
+            </div>
+        </div>
+
+        <!-- SLIDE 2 -->
+        <div class="slide">
+            <span class="card-badge">ПОЧЕМУ 2027 ГОД?</span>
+            <h2>Концепция и Тренды Сезона 2027</h2>
+            <div class="grid-3">
+                <div class="card">
+                    <span class="card-badge">Виноделие</span>
+                    <h3>🍷 Винный Ренессанс</h3>
+                    <ul>
+                        <li>8000 лет винной культуры в глиняных квеври.</li>
+                        <li>Доступ в закрытые семейные погреба Кахетии.</li>
+                        <li>Дегустации раритетных сортов Саперави.</li>
+                        <li>Участие в осеннем празднике сбора Ртвели.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <span class="card-badge">Кавказ</span>
+                    <h3>🏔 Горные Экспедиции</h3>
+                    <ul>
+                        <li>Панорама Казбека (5033 м) и Троицкая церковь.</li>
+                        <li>Древние башни Местии и высокогорного Ушгули.</li>
+                        <li>Легкие видовые треккинги для всех возрастов.</li>
+                        <li>Проживание в дизайнерских лоджах Rooms Hotel.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <span class="card-badge">Комфорт</span>
+                    <h3>🏰 Премиальный Сервис</h3>
+                    <ul>
+                        <li>Транспорт Mercedes Sprinter VIP Business.</li>
+                        <li>Бутик-отели 4-5★ в Тбилиси и Кахетии.</li>
+                        <li>Личный шеф-повар и эксперты-историки.</li>
+                        <li>Круглосуточный консьерж 24/7.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <span>Слайд 2: Стратегия и позиционирование</span>
+                <span>Mika (AGY)</span>
+            </div>
+        </div>
+
+        <!-- SLIDE 3 -->
+        <div class="slide">
+            <span class="card-badge">ИТИНЕРАРИИ</span>
+            <h2>Флагманские Маршруты 2027</h2>
+            <div class="grid-2">
+                <div class="card">
+                    <span class="card-badge">5 Дней · Гастрономия</span>
+                    <h3>Маршрут А: «Душа Кахетии & Тбилиси»</h3>
+                    <ul>
+                        <li><b>День 1:</b> Прибытие в Тбилиси, фуникулер, серные бани Абанотубани.</li>
+                        <li><b>День 2:</b> Прогулка по старым кварталам, арт-галереям и ужин в винном баре.</li>
+                        <li><b>День 3:</b> Выезд в Кахетию, город любви Сигнахи, частное шато.</li>
+                        <li><b>День 4:</b> Алазанская долина, замок Греми, ужин в усадьбе Цинандали.</li>
+                        <li><b>День 5:</b> Мастер-класс по грузинской выпечке и отъезд.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <span class="card-badge">7 Дней · Экспедиция</span>
+                    <h3>Маршрут B: «Казбеги & Высокая Сванетия»</h3>
+                    <ul>
+                        <li><b>День 1-2:</b> Военно-Грузинская дорога, Ананури, арка Дружбы, закат над Казбеком.</li>
+                        <li><b>День 3:</b> Джип-тур в живописное ущелье Трусо и минеральные источники.</li>
+                        <li><b>День 4-5:</b> Перелет/трансфер в Сванетию, башни Местии, музей Хергиани.</li>
+                        <li><b>День 6:</b> Выезд в самое высокогорное село Европы — Ушгули (2200 м).</li>
+                        <li><b>День 7:</b> Спуск к Черному морю в Батуми или возвращение в Тбилиси.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <span>Слайд 3: Детализированные программы</span>
+                <span>Mika (AGY)</span>
+            </div>
+        </div>
+
+        <!-- SLIDE 4 -->
+        <div class="slide">
+            <span class="card-badge">ПОГОДА & СЕЗОННОСТЬ</span>
+            <h2>Календарь Путешествий 2027</h2>
+            <div class="grid-4">
+                <div class="card">
+                    <span class="card-badge">Апрель - Май</span>
+                    <h3>🌸 Весна 2027</h3>
+                    <ul>
+                        <li>Цветение садов и зелень.</li>
+                        <li>Идеально для Тбилиси (+22°C).</li>
+                        <li>Пасхальные традиции.</li>
+                        <li>Молодые вина урожая.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <span class="card-badge">Июнь - Август</span>
+                    <h3>☀️ Лето 2027</h3>
+                    <ul>
+                        <li>Прохлада в горах Кавказа.</li>
+                        <li>Открыты перевалы в Сванетию.</li>
+                        <li>Купальный сезон в Батуми.</li>
+                        <li>Музыкальные фестивали.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <span class="card-badge">Сентябрь - Октябрь</span>
+                    <h3>🍇 Осень 2027</h3>
+                    <ul>
+                        <li>Сезон сбора винограда Ртвели!</li>
+                        <li>Золотая осень в ущельях.</li>
+                        <li>Фестиваль Тбилисоба.</li>
+                        <li>Бархатный сезон.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <span class="card-badge">Декабрь - Февраль</span>
+                    <h3>❄️ Зима 2027</h3>
+                    <ul>
+                        <li>Курорт Гудаури и фрирайд.</li>
+                        <li>Праздничный Тбилиси.</li>
+                        <li>Горячие серные бани.</li>
+                        <li>Зимнее застолье с хачапури.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <span>Слайд 4: Круглогодичные туры</span>
+                <span>Mika (AGY)</span>
+            </div>
+        </div>
+
+        <!-- SLIDE 5 -->
+        <div class="slide">
+            <span class="card-badge">СТОИМОСТЬ</span>
+            <h2>Пакеты и Тарифы 2027</h2>
+            <div class="grid-3">
+                <div class="card">
+                    <span class="card-badge">Базовый Комфорт</span>
+                    <h3>Comfort Explorer</h3>
+                    <p style="font-size:20px; font-weight:800; color:var(--gold); margin:8px 0;">$1,250 <span style="font-size:13px; font-weight:normal; color:var(--text-muted);">/ чел</span></p>
+                    <ul>
+                        <li>Отели 4★ с завтраками.</li>
+                        <li>Комфортный микроавтобус.</li>
+                        <li>Все входные билеты и гид.</li>
+                        <li>3 главные дегустации вин.</li>
+                    </ul>
+                </div>
+                <div class="card" style="border-color:var(--gold);">
+                    <span class="card-badge">ХИТ ПРОДАЖ</span>
+                    <h3>VIP Boutique & Wine</h3>
+                    <p style="font-size:20px; font-weight:800; color:var(--gold); margin:8px 0;">$2,400 <span style="font-size:13px; font-weight:normal; color:var(--text-muted);">/ чел</span></p>
+                    <ul>
+                        <li>Отели 5★ (Rooms Hotel, Radisson).</li>
+                        <li>Mercedes V-Class VIP трансфер.</li>
+                        <li>Все обеды и ужины в топ-ресторанах.</li>
+                        <li>Приватные закрытые дегустации.</li>
+                        <li>Консьерж-сервис 24/7.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <span class="card-badge">Эксклюзив</span>
+                    <h3>Bespoke Luxury</h3>
+                    <p style="font-size:20px; font-weight:800; color:var(--gold); margin:8px 0;">От $4,500 <span style="font-size:13px; font-weight:normal; color:var(--text-muted);">/ чел</span></p>
+                    <ul>
+                        <li>Индивидуальный сценарий тура.</li>
+                        <li>Вертолетные экскурсии на Казбек.</li>
+                        <li>Коллекционные вина вековой выдержки.</li>
+                        <li>Личный шеф-повар и охрана.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <span>Слайд 5: Прозрачная тарифная сетка</span>
+                <span>Mika (AGY)</span>
+            </div>
+        </div>
+
+        <!-- SLIDE 6 -->
+        <div class="slide">
+            <span class="card-badge">СВЯЗЬ С НАМИ</span>
+            <h2>Раннее Бронирование Сезона 2027</h2>
+            <div class="card" style="margin-top:20px; padding:30px;">
+                <p style="font-size:16px; color:var(--text-main); margin-bottom:16px;">
+                    Раннее бронирование тура в Грузию 2027 гарантирует сохранение цен и бронь лучших номеров в видовых отелях Казбеги и Кахетии.
+                </p>
+                <ul style="margin-bottom:24px;">
+                    <li><b>Скидка ранней пташки:</b> 15% при бронировании до 31 декабря 2026 года.</li>
+                    <li><b>Телефон / WhatsApp:</b> +995 (555) 00-2027</li>
+                    <li><b>Электронная почта:</b> tours2027@georgia-travel.com</li>
+                    <li><b>Индивидуальная адаптация:</b> под любые даты и состав гостей.</li>
+                </ul>
+                <div style="background:rgba(245, 158, 11, 0.1); border:1px solid rgba(245, 158, 11, 0.3); padding:16px; border-radius:10px; font-size:14px; color:var(--gold);">
+                    🐱 Создано для Катеньки персональным ассистентом Mika (AGY Brain)!
+                </div>
+            </div>
+            <div class="slide-footer">
+                <span>Слайд 6: Финал презентации</span>
+                <span>Mika Desktop 2026</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const indicator = document.getElementById('slideIndicator');
+
+        function showSlide(index) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (index + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            indicator.textContent = `Слайд ${currentSlide + 1} из ${slides.length}`;
+        }
+
+        function nextSlide() { showSlide(currentSlide + 1); }
+        function prevSlide() { showSlide(currentSlide - 1); }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+            if (e.key === 'ArrowLeft') prevSlide();
+        });
+    </script>
+</body>
+</html>

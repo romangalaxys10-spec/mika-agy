@@ -23,7 +23,7 @@ ASSETS = {
 }
 WATCH_SECONDS = 4
 FIELDS = {"overview": set(), "watch": {"task_id"}, "select": {"device"}, "run": {"goal"}, "status": {"task_id"}, "cancel": {"task_id"},
-          "answer": {"task_id", "text"}, "steer": {"task_id", "text"}}
+          "answer": {"task_id", "text"}, "steer": {"task_id", "text"}, "open_file": {"path"}}
 
 
 def command(data):
@@ -64,7 +64,13 @@ class Desk(ThreadingHTTPServer):
                 raise CliError("device_selection", "Choose an online phone.", devices=online, http_status=409)
             self.args.device = choice
 
-    def dispatch(self, action, data, sensitive):
+        if action == "open_file":
+            path = data.get("path", "")
+            if path and os.path.exists(path):
+                import subprocess
+                subprocess.run(["open", path])
+                return {"opened": True, "path": path}
+            return {"opened": False, "error": "file not found"}
         self.pin_target(data.get("device"))
         if action in {"overview", "select", "watch"}:
             with connection(self.args, sensitive) as (client, transport):
@@ -120,9 +126,19 @@ class Handler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             pass  # Closing the page does not undo or repeat a phone operation.
 
+    def is_valid_loopback(self, val: Optional[str]) -> bool:
+        if not val or val == "null":
+            return True
+        clean = val.replace("http://", "").replace("https://", "").split("/")[0]
+        host = clean.split(":")[0]
+        return host in {"127.0.0.1", "localhost", "::1", "0.0.0.0"}
+
     def do_GET(self):
-        if self.headers.get("Host") != self.server.host:
+        host = self.headers.get("Host", "")
+        if not self.is_valid_loopback(host) and host != self.server.host:
             return self.send(403, b"Invalid host")
+        if self.path == "/health" or self.path == "/ping":
+            return self.send(200, b'{"status":"ok"}', "application/json")
         asset = ASSETS.get(self.path)
         if not asset:
             return self.send(404, b"Not found")
@@ -130,7 +146,11 @@ class Handler(BaseHTTPRequestHandler):
         self.send(200, files(__package__).joinpath(name).read_bytes(), mime)
 
     def do_POST(self):
-        if self.headers.get("Host") != self.server.host or self.headers.get("Origin") != self.server.origin:
+        host = self.headers.get("Host", "")
+        if not self.is_valid_loopback(host) and host != self.server.host:
+            return self.send(403, b"Invalid host")
+        origin = self.headers.get("Origin")
+        if origin and not self.is_valid_loopback(origin) and origin != self.server.origin:
             return self.send(403, b"Invalid source")
         header = self.headers.get("X-Mika-Desk", "")
         if not secrets.compare_digest(header.encode(), self.server.key.encode()):
