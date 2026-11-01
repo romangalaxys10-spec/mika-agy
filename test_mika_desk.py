@@ -61,6 +61,17 @@ def run_qa():
         assert "connect-src" in csp
         print(f"✅ GET /desk.js: 200 OK (CSP: {csp[:50]}...)")
 
+    # 1b. Test Loopback Session without X-Mika-Desk (Page reload without #ticket)
+    req_no_auth = urllib.request.Request(
+        f"{base_url}/desk",
+        data=json.dumps({"action": "mcp_servers"}).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Host": headers["Host"], "Origin": base_url}
+    )
+    with urllib.request.urlopen(req_no_auth) as resp:
+        res = json.loads(resp.read().decode("utf-8"))
+        assert resp.status == 200
+        print("✅ Loopback without ticket header: 200 OK — Allowed safely on loopback!")
+
     # 1b. Test POST /desk (overview)
     post_data = json.dumps({"action": "overview"}).encode("utf-8")
     req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)

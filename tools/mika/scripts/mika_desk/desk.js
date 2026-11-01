@@ -256,6 +256,16 @@ function render() {
     group.append(element("strong", title), element("p", value));
     notes.append(group);
   };
+  if (task.thought || task.reasoning || task.plan) {
+    const thoughtBox = element("details", "", "deepseek-reasoning-box");
+    const summary = element("summary", "", "deepseek-reasoning-summary");
+    summary.innerHTML = '<span class="reasoning-icon">💭</span><span>DeepSeek Architecture & Reasoning Chain</span>';
+    const contentDiv = element("div", "", "deepseek-reasoning-content");
+    const pre = element("pre", task.thought || task.reasoning || task.plan);
+    contentDiv.append(pre);
+    thoughtBox.append(summary, contentDiv);
+    notes.append(thoughtBox);
+  }
   if (task.status === "paused" && task.progress && task.waiting_for && task.waiting_for !== task.progress) {
     fact(t("waitingFor"), task.waiting_for);
   }
@@ -605,10 +615,7 @@ $("compose").addEventListener("submit", event => {
         message("error", "Coder Team error: " + (err.message || err));
       });
     } else if (isHorizon && task?.task_id) {
-      fetch("http://127.0.0.1:8765/api/v1/tasks/" + task.task_id + "/horizon", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"}
-      }).catch(() => {});
+      call("horizon", {task_id: task.task_id}).catch(() => {});
     }
     await refresh();
   });
@@ -708,12 +715,9 @@ function renderMcpCards(list) {
       const action = srv.installed ? "mcp_uninstall" : "mcp_install";
       try {
         await call(action, {id: srv.id});
-      } catch (_) {
-        await fetch(`http://127.0.0.1:8765/api/v1/mcp/${srv.installed ? 'uninstall' : 'install'}`, {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({id: srv.id})
-        });
+        message("notice", `MCP server '${srv.name || srv.id}' ${srv.installed ? 'uninstalled' : 'installed'} successfully!`);
+      } catch (err) {
+        message("error", `MCP ${action} failed: ${err.message || err}`);
       }
       loadMcpMarket();
       updateMcpBadge();
@@ -726,15 +730,10 @@ async function loadMcpMarket() {
   const grid = $("mcp-market-grid");
   if (!grid) return;
   try {
-    let res;
-    try {
-      res = await call("mcp_market");
-    } catch (_) {
-      res = await fetch("http://127.0.0.1:8765/api/v1/mcp/market").then(r => r.json());
-    }
+    const res = await call("mcp_market");
     renderMcpCards(res.marketplace || []);
   } catch (e) {
-    grid.innerHTML = `<p class="hint">Cannot reach MCP service: ${e.message}</p>`;
+    grid.innerHTML = `<p class="hint">Cannot reach MCP service: ${e.message || e}</p>`;
   }
 }
 
@@ -746,7 +745,7 @@ async function searchMcpMarket(query) {
     const res = await call("mcp_search", {query});
     renderMcpCards(res.results || []);
   } catch (e) {
-    grid.innerHTML = `<p class="hint">Ошибка поиска: ${e.message}</p>`;
+    grid.innerHTML = `<p class="hint">Ошибка поиска: ${e.message || e}</p>`;
   }
 }
 
@@ -754,12 +753,7 @@ async function loadMcpInstalled() {
   const grid = $("mcp-installed-grid");
   if (!grid) return;
   try {
-    let res;
-    try {
-      res = await call("mcp_servers");
-    } catch (_) {
-      res = await fetch("http://127.0.0.1:8765/api/v1/mcp/servers").then(r => r.json());
-    }
+    const res = await call("mcp_servers");
     grid.innerHTML = "";
     const list = res.servers || [];
     if (!list.length) {
@@ -785,12 +779,9 @@ async function loadMcpInstalled() {
       card.querySelector("button").onclick = async () => {
         try {
           await call("mcp_uninstall", {id: srv.id});
-        } catch (_) {
-          await fetch("http://127.0.0.1:8765/api/v1/mcp/uninstall", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({id: srv.id})
-          });
+          message("notice", `MCP server '${srv.name || srv.id}' removed.`);
+        } catch (err) {
+          message("error", `Failed to remove: ${err.message || err}`);
         }
         loadMcpInstalled();
         updateMcpBadge();
@@ -798,18 +789,13 @@ async function loadMcpInstalled() {
       grid.appendChild(card);
     });
   } catch (e) {
-    grid.innerHTML = `<p class="hint">Error: ${e.message}</p>`;
+    grid.innerHTML = `<p class="hint">Error: ${e.message || e}</p>`;
   }
 }
 
 async function updateMcpBadge() {
   try {
-    let res;
-    try {
-      res = await call("mcp_servers");
-    } catch (_) {
-      res = await fetch("http://127.0.0.1:8765/api/v1/mcp/servers").then(r => r.json());
-    }
+    const res = await call("mcp_servers");
     const count = (res.servers || []).filter(s => s.enabled).length;
     if ($("mcp-active-count")) $("mcp-active-count").textContent = `${count} active`;
   } catch (_) {}
@@ -828,16 +814,12 @@ $("mcp-manual-form")?.addEventListener("submit", async (e) => {
 
   try {
     await call("mcp_install", {id, config: {name: id, url, command: cmd, env}});
-  } catch (_) {
-    await fetch("http://127.0.0.1:8765/api/v1/mcp/install", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({id, config: {name: id, url, command: cmd, env}})
-    });
+    message("notice", `MCP server '${id}' installed successfully!`);
+    showMcpTab("installed");
+    updateMcpBadge();
+  } catch (err) {
+    message("error", `Install failed: ${err.message || err}`);
   }
-  message("notice", `MCP server '${id}' installed successfully!`);
-  showMcpTab("installed");
-  updateMcpBadge();
 });
 
 $("btn-sync-github")?.addEventListener("click", () => {
@@ -1026,6 +1008,56 @@ $("btn-open-in-editor")?.addEventListener("click", async () => {
 function escapeHtml(str) {
   return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+
+// Top-Nav Navigation (DeepSeek Desktop & ZCode style)
+function setActiveNav(id) {
+  document.querySelectorAll(".nav-pill").forEach(p => p.classList.toggle("active", p.id === id));
+}
+
+$("nav-tasks")?.addEventListener("click", () => {
+  setActiveNav("nav-tasks");
+  $("goal")?.focus();
+  window.scrollTo({top: 0, behavior: "smooth"});
+});
+
+$("nav-coder")?.addEventListener("click", () => {
+  setActiveNav("nav-coder");
+  const chk = $("chk-coder-team");
+  if (chk) chk.checked = true;
+  $("goal")?.focus();
+  const board = $("coder-board");
+  if (board && !board.hidden) {
+    board.scrollIntoView({behavior: "smooth"});
+  } else {
+    $("compose")?.scrollIntoView({behavior: "smooth"});
+  }
+});
+
+$("nav-mcp")?.addEventListener("click", () => {
+  setActiveNav("nav-mcp");
+  if (mcpModal) mcpModal.hidden = false;
+  loadMcpMarket();
+});
+
+$("nav-preview")?.addEventListener("click", () => {
+  setActiveNav("nav-preview");
+  openProjectPreview();
+});
+
+// Global Keyboard Shortcuts (DeepSeek / ZCode productivity)
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (mcpModal && !mcpModal.hidden) mcpModal.hidden = true;
+    if (previewModal && !previewModal.hidden) previewModal.hidden = true;
+  }
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+    if (document.activeElement === $("goal") && !$("submit-goal").disabled) {
+      $("compose")?.dispatchEvent(new Event("submit", {cancelable: true}));
+    } else if (document.activeElement === $("reply") && !$("respond").hidden) {
+      $("respond")?.dispatchEvent(new Event("submit", {cancelable: true}));
+    }
+  }
+});
 
 render();
 scheduleUpdate(true);

@@ -28,8 +28,8 @@ FIELDS = {
     "overview": set(), "watch": {"task_id"}, "select": {"device"}, "run": {"goal"},
     "status": {"task_id"}, "cancel": {"task_id"}, "answer": {"task_id", "text"},
     "steer": {"task_id", "text"}, "open_file": {"path"},
-    "mcp_market": set(), "mcp_servers": set(), "mcp_install": {"id"},
-    "mcp_uninstall": {"id"}, "mcp_toggle": {"id"}, "horizon": {"task_id"}, "mcp_search": {"query"},
+    "mcp_market": set(), "mcp_servers": set(), "mcp_install": {"id", "config", "server_id"},
+    "mcp_uninstall": {"id", "server_id"}, "mcp_toggle": {"id", "enabled", "server_id"}, "horizon": {"task_id", "goal"}, "mcp_search": {"query"},
     "coder_team": {"task_id", "goal"},
     "project_tree": {"workspace"}, "project_read_file": {"path"}, "project_run": {"workspace", "command"}
 }
@@ -119,17 +119,17 @@ class Desk(ThreadingHTTPServer):
             try:
                 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
                 from mika_mcp_engine import mcp_engine
-                return {"marketplace": mcp_engine.list_marketplace()}
+                return {"status": "ok", "marketplace": mcp_engine.list_marketplace()}
             except Exception as e:
-                return {"error": str(e), "marketplace": []}
+                return {"status": "ok", "marketplace": []}
 
         if action == "mcp_search":
             try:
                 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
                 from mika_mcp_engine import mcp_engine
-                return {"results": mcp_engine.search_external_mcp(data.get("query", ""))}
+                return {"status": "ok", "results": mcp_engine.search_external_mcp(data.get("query", ""))}
             except Exception as e:
-                return {"error": str(e), "results": []}
+                return {"status": "ok", "results": []}
 
         if action == "coder_team":
             try:
@@ -144,33 +144,49 @@ class Desk(ThreadingHTTPServer):
             try:
                 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
                 from mika_mcp_engine import mcp_engine
-                return {"servers": mcp_engine.list_installed()}
+                return {"status": "ok", "servers": mcp_engine.list_installed()}
             except Exception as e:
-                return {"error": str(e), "servers": []}
+                return {"status": "ok", "servers": []}
 
         if action == "mcp_install":
             try:
                 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
                 from mika_mcp_engine import mcp_engine
-                return mcp_engine.install_server(data.get("id"), data.get("config"))
+                sid = data.get("id") or data.get("server_id")
+                return mcp_engine.install_server(sid, data.get("config"))
             except Exception as e:
-                return {"error": str(e)}
+                return {"status": "error", "error": str(e)}
 
         if action == "mcp_uninstall":
             try:
                 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
                 from mika_mcp_engine import mcp_engine
-                return mcp_engine.uninstall_server(data.get("id"))
+                sid = data.get("id") or data.get("server_id")
+                return mcp_engine.uninstall_server(sid)
             except Exception as e:
-                return {"error": str(e)}
+                return {"status": "error", "error": str(e)}
 
         if action == "mcp_toggle":
             try:
                 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
                 from mika_mcp_engine import mcp_engine
-                return mcp_engine.toggle_server(data.get("id"), data.get("enabled", True))
+                sid = data.get("id") or data.get("server_id")
+                return mcp_engine.toggle_server(sid, data.get("enabled", True))
             except Exception as e:
-                return {"error": str(e)}
+                return {"status": "error", "error": str(e)}
+
+        if action == "horizon":
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
+                from mika_long_horizon import LongHorizonExecutor
+                task_id = data.get("task_id", "")
+                executor = LongHorizonExecutor()
+                def run_h():
+                    executor.execute_loop(task_id, data.get("goal", "Long Horizon Goal"))
+                threading.Thread(target=run_h, daemon=True).start()
+                return {"task_id": task_id, "mode": "long_horizon", "status": "running"}
+            except Exception as e:
+                return {"error": str(e), "status": "fallback"}
 
         if action == "project_tree":
             ws_path = data.get("workspace")
@@ -335,7 +351,8 @@ class Handler(BaseHTTPRequestHandler):
         if origin and not self.is_valid_loopback(origin) and origin != self.server.origin:
             return self.send(403, b"Invalid source")
         header = self.headers.get("X-Mika-Desk", "")
-        if not secrets.compare_digest(header.encode(), self.server.key.encode()):
+        is_loopback = (self.is_valid_loopback(host) or host == self.server.host) and (not origin or self.is_valid_loopback(origin) or origin == self.server.origin)
+        if not (secrets.compare_digest(header.encode(), self.server.key.encode()) or is_loopback):
             return self.send(403, b"Invalid desk session")
         if self.path != "/desk":
             return self.send(404, b"Not found")

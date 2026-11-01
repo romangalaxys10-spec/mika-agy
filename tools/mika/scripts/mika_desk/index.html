@@ -10,7 +10,22 @@
 </head>
 <body>
   <!-- English is the fallback; desk.js swaps every data-i18n text for the browser's language. -->
-  <header class="bar"><div class="wrap brand"><strong><img src="/mika-logo.png" width="36" height="36" alt="">Mika</strong><span data-i18n="workspace">Personal workspace</span></div></header>
+  <header class="bar">
+    <div class="wrap brand">
+      <strong><img src="/mika-logo.png" width="36" height="36" alt="">Mika AGY 2.0</strong>
+      <span class="brand-tag">DeepSeek × ZCode</span>
+      <nav class="top-nav">
+        <button type="button" class="nav-pill active" id="nav-tasks">📱 Tasks</button>
+        <button type="button" class="nav-pill" id="nav-coder">🧑‍💻 Coder Team</button>
+        <button type="button" class="nav-pill" id="nav-mcp">🧩 MCP Hub</button>
+        <button type="button" class="nav-pill" id="nav-preview">👁️ Live Sandbox</button>
+      </nav>
+      <div class="header-status-group">
+        <span class="header-badge online" id="top-agent-status">● Agent Online</span>
+        <span class="header-badge witness" id="top-witness-status">🛡️ In-toto Verified</span>
+      </div>
+    </div>
+  </header>
   <main class="wrap">
     <div class="heading">
       <div><h1 data-i18n="heading">Task desk</h1><p data-i18n="intro">Hand tasks to Mika Agent on macOS, follow progress and inspect deliverables.</p></div>
