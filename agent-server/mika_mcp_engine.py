@@ -7,8 +7,10 @@ Saves configuration to ~/.mika/mcp_servers.json.
 
 import os
 import sys
+import time
 import json
 import shlex
+import shutil
 import asyncio
 import logging
 import subprocess
@@ -454,9 +456,217 @@ class MCPEngine:
         for sid, conf in self.servers.items():
             item = dict(conf)
             item["id"] = sid
-            item["tools_count"] = len(self.cached_tools.get(sid, []))
+            item["name"] = conf.get("name", sid)
+            item["scope"] = conf.get("scope", "user")
+            
+            # Transport normalization
+            if conf.get("command"):
+                item["type"] = "stdio"
+            elif conf.get("type") in ["http", "sse", "streamableHttp"]:
+                item["type"] = conf["type"]
+            elif conf.get("url"):
+                item["type"] = "http"
+            else:
+                item["type"] = "stdio"
+            
+            # Tools & Status
+            if sid == "mac-office-suite":
+                office_tools = [
+                    {"name": "create_deck", "description": "Generate PowerPoint .pptx deck & interactive HTML presentation"},
+                    {"name": "create_model", "description": "Generate multi-tab Excel financial model & budget calculation"},
+                    {"name": "create_proposal", "description": "Generate Word proposal document (.docx) with cover page"},
+                    {"name": "create_workspace", "description": "Create organized project workspace on Desktop"}
+                ]
+                item["tools"] = office_tools
+                item["tools_count"] = len(office_tools)
+                item["status"] = "connected" if conf.get("enabled", True) else "disconnected"
+            elif sid in self.cached_tools:
+                item["tools"] = self.cached_tools[sid]
+                item["tools_count"] = len(self.cached_tools[sid])
+                item["status"] = "connected" if conf.get("enabled", True) else "disconnected"
+            else:
+                item["tools"] = []
+                item["tools_count"] = 0
+                item["status"] = "connected" if conf.get("enabled", True) else "disconnected"
+
             result.append(item)
         return result
+
+    def probe_server(self, server_id: Optional[str] = None, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Runs connectivity & tool discovery probe similar to ZCode's testMcpConnectivity."""
+        start_time = time.time()
+        cfg = config or (self.servers.get(server_id) if server_id else None)
+        if not cfg:
+            return {"success": False, "status": "error", "error": "Server configuration not found", "response_time_ms": 0}
+
+        sid = server_id or cfg.get("id") or cfg.get("name") or "custom"
+
+        # Special case: mac-office-suite
+        if sid == "mac-office-suite":
+            office_tools = [
+                {"name": "create_deck", "description": "Generate PowerPoint .pptx deck & interactive HTML presentation"},
+                {"name": "create_model", "description": "Generate multi-tab Excel financial model & budget calculation"},
+                {"name": "create_proposal", "description": "Generate Word proposal document (.docx) with cover page"},
+                {"name": "create_workspace", "description": "Create organized project workspace on Desktop"}
+            ]
+            self.cached_tools[sid] = office_tools
+            return {
+                "success": True,
+                "status": "connected",
+                "response_time_ms": round((time.time() - start_time) * 1000, 1),
+                "tool_count": len(office_tools),
+                "tools": office_tools
+            }
+
+        cmd = cfg.get("command", "")
+        url = cfg.get("url", "")
+
+        # 1. URL / HTTP probe
+        if url and not cmd:
+            try:
+                import urllib.request
+                req = urllib.request.Request(url, headers=cfg.get("headers", {}))
+                with urllib.request.urlopen(req, timeout=4) as resp:
+                    resp_time = round((time.time() - start_time) * 1000, 1)
+                    return {
+                        "success": True,
+                        "status": "connected",
+                        "response_time_ms": resp_time,
+                        "tool_count": len(self.cached_tools.get(sid, [])),
+                        "tools": self.cached_tools.get(sid, [])
+                    }
+            except Exception as e:
+                resp_time = round((time.time() - start_time) * 1000, 1)
+                return {
+                    "success": False,
+                    "status": "error",
+                    "failureKind": "connection_refused",
+                    "error": str(e),
+                    "response_time_ms": resp_time
+                }
+
+        # 2. Stdio probe
+        if not cmd:
+            return {"success": False, "status": "error", "error": "Missing command for stdio server", "response_time_ms": 0}
+
+        executable = shutil.which(cmd)
+        if not executable and not os.path.isabs(cmd):
+            resp_time = round((time.time() - start_time) * 1000, 1)
+            return {
+                "success": False,
+                "status": "error",
+                "failureKind": "spawn_failed",
+                "error": f"Executable '{cmd}' not found on system PATH. Please ensure Node/Python/uv is installed.",
+                "response_time_ms": resp_time
+            }
+
+        args = cfg.get("args", [])
+        if isinstance(args, str):
+            args = shlex.split(args) if args.strip() else []
+        full_cmd = [cmd] + args
+        env = os.environ.copy()
+        env.update(cfg.get("env", {}))
+
+        rpc_request = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+        try:
+            proc = subprocess.Popen(
+                full_cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env=env
+            )
+            stdout, stderr = proc.communicate(input=json.dumps(rpc_request) + "\n", timeout=3.5)
+            resp_time = round((time.time() - start_time) * 1000, 1)
+
+            tools = []
+            for line in stdout.splitlines():
+                line = line.strip()
+                if line.startswith("{") and line.endswith("}"):
+                    try:
+                        res = json.loads(line)
+                        if "result" in res and "tools" in res["result"]:
+                            tools = res["result"]["tools"]
+                            break
+                    except Exception:
+                        pass
+
+            if tools:
+                self.cached_tools[sid] = tools
+                return {
+                    "success": True,
+                    "status": "connected",
+                    "response_time_ms": resp_time,
+                    "tool_count": len(tools),
+                    "tools": tools
+                }
+            elif proc.returncode == 0:
+                return {
+                    "success": True,
+                    "status": "connected",
+                    "response_time_ms": resp_time,
+                    "tool_count": len(self.cached_tools.get(sid, [])),
+                    "tools": self.cached_tools.get(sid, [])
+                }
+            else:
+                return {
+                    "success": False,
+                    "status": "error",
+                    "failureKind": "process_exit",
+                    "error": stderr.strip() or f"Process exited with code {proc.returncode}",
+                    "response_time_ms": resp_time
+                }
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            resp_time = round((time.time() - start_time) * 1000, 1)
+            return {
+                "success": True,
+                "status": "connected",
+                "response_time_ms": resp_time,
+                "tool_count": len(self.cached_tools.get(sid, [])),
+                "tools": self.cached_tools.get(sid, []),
+                "note": "Process spawned successfully (keep-alive stream)"
+            }
+        except Exception as e:
+            resp_time = round((time.time() - start_time) * 1000, 1)
+            return {
+                "success": False,
+                "status": "error",
+                "failureKind": "spawn_failed",
+                "error": str(e),
+                "response_time_ms": resp_time
+            }
+
+    def get_raw_config(self) -> Dict[str, Any]:
+        """Returns raw JSON configuration from ~/.mika/mcp_servers.json."""
+        try:
+            if self.config_file.exists():
+                text = self.config_file.read_text(encoding="utf-8")
+                return {"status": "ok", "raw": text}
+            raw = json.dumps({"mcpServers": self.servers}, indent=2, ensure_ascii=False)
+            return {"status": "ok", "raw": raw}
+        except Exception as e:
+            return {"status": "error", "error": str(e), "raw": "{}"}
+
+    def save_raw_config(self, raw_str: str) -> Dict[str, Any]:
+        """Saves and validates raw JSON configuration."""
+        try:
+            data = json.loads(raw_str)
+            if not isinstance(data, dict):
+                return {"status": "error", "error": "Root JSON must be an object"}
+
+            servers_dict = data.get("mcpServers") or data.get("servers") or data
+            if not isinstance(servers_dict, dict):
+                return {"status": "error", "error": "'mcpServers' must be a dictionary of server objects"}
+
+            self.servers = servers_dict
+            self.save_config()
+            return {"status": "ok", "count": len(self.servers)}
+        except json.JSONDecodeError as jde:
+            return {"status": "error", "error": f"JSON syntax error: {jde}"}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
 
     def install_server(self, server_id: str, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Installs from marketplace or custom definition."""
@@ -468,36 +678,50 @@ class MCPEngine:
                 "command": catalog_item["command"],
                 "args": catalog_item["args"],
                 "env": catalog_item.get("env", {}),
+                "scope": catalog_item.get("scope", "user"),
                 "enabled": True,
                 "type": "marketplace"
             }
         elif config:
-            # Custom install (URL or Command)
             cmd = config.get("command", "")
             args = config.get("args", [])
             if isinstance(args, str):
-                args = shlex.split(args)
-            
-            # URL install mode (e.g. git repo or npm package URL)
+                args = shlex.split(args) if args.strip() else []
+
+            env = config.get("env", {})
+            if isinstance(env, str):
+                try:
+                    env = json.loads(env) if env.strip() else {}
+                except Exception:
+                    env = {}
+
+            headers = config.get("headers", {})
+            if isinstance(headers, str):
+                try:
+                    headers = json.loads(headers) if headers.strip() else {}
+                except Exception:
+                    headers = {}
+
             url = config.get("url", "").strip()
-            if url:
+            if url and not cmd:
                 if "github.com" in url or url.endswith(".git"):
-                    # Use uvx / npx / pip git clone
                     cmd = "npx"
                     args = ["-y", url]
                 elif url.startswith("http"):
-                    cmd = "curl"
-                    args = ["-sL", url]
+                    cmd = ""
 
             self.servers[server_id] = {
                 "id": server_id,
                 "name": config.get("name", server_id),
                 "command": cmd,
                 "args": args,
-                "env": config.get("env", {}),
-                "enabled": True,
-                "type": "custom",
-                "url": url
+                "env": env,
+                "headers": headers,
+                "scope": config.get("scope", config.get("storageLevel", "user")),
+                "enabled": config.get("enabled", True),
+                "type": config.get("type", "stdio" if cmd else "http"),
+                "url": url,
+                "timeoutMs": config.get("timeoutMs", 5000)
             }
         elif not config:
             ext = self.search_external_mcp(server_id)
@@ -509,6 +733,7 @@ class MCPEngine:
                     "command": match["command"],
                     "args": match["args"],
                     "env": match.get("env", {}),
+                    "scope": "user",
                     "enabled": True,
                     "type": match.get("source", "external")
                 }

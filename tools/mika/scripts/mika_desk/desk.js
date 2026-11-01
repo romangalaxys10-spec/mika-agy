@@ -726,27 +726,630 @@ mcpModal?.addEventListener("click", (e) => {
   if (e.target === mcpModal) mcpModal.hidden = true;
 });
 
-$("tab-mcp-market")?.addEventListener("click", () => showMcpTab("market"));
 $("tab-mcp-installed")?.addEventListener("click", () => showMcpTab("installed"));
-$("tab-mcp-manual")?.addEventListener("click", () => showMcpTab("manual"));
+$("tab-mcp-market")?.addEventListener("click", () => showMcpTab("market"));
+$("tab-mcp-form")?.addEventListener("click", () => showMcpTab("form"));
+$("tab-mcp-raw")?.addEventListener("click", () => showMcpTab("raw"));
+$("btn-goto-add-server")?.addEventListener("click", () => showMcpTab("form"));
+$("btn-mcp-reload-all")?.addEventListener("click", () => {
+  loadMcpInstalled();
+  loadMcpMarket();
+  updateMcpBadge();
+  message("notice", "Probed & refreshed all MCP servers 🔄");
+});
 
 function showMcpTab(tab) {
-  $("tab-mcp-market")?.classList.toggle("active", tab === "market");
   $("tab-mcp-installed")?.classList.toggle("active", tab === "installed");
-  $("tab-mcp-manual")?.classList.toggle("active", tab === "manual");
-  if ($("mcp-view-market")) $("mcp-view-market").hidden = tab !== "market";
+  $("tab-mcp-market")?.classList.toggle("active", tab === "market");
+  $("tab-mcp-form")?.classList.toggle("active", tab === "form");
+  $("tab-mcp-raw")?.classList.toggle("active", tab === "raw");
+
   if ($("mcp-view-installed")) $("mcp-view-installed").hidden = tab !== "installed";
-  if ($("mcp-view-manual")) $("mcp-view-manual").hidden = tab !== "manual";
-  if (tab === "market") loadMcpMarket();
+  if ($("mcp-view-market")) $("mcp-view-market").hidden = tab !== "market";
+  if ($("mcp-view-form")) $("mcp-view-form").hidden = tab !== "form";
+  if ($("mcp-view-raw")) $("mcp-view-raw").hidden = tab !== "raw";
+
   if (tab === "installed") loadMcpInstalled();
+  if (tab === "market") loadMcpMarket();
+  if (tab === "raw") loadMcpRaw();
 }
 
+// =========================================================================
+// ZCode McpServerList: Installed Servers with Cable Icon & Status Probe
+// =========================================================================
+let installedServersCache = [];
+
+async function loadMcpInstalled() {
+  const container = $("mcp-installed-list");
+  if (!container) return;
+  container.innerHTML = '<p class="hint">Loading MCP servers...</p>';
+
+  try {
+    const res = await call("mcp_servers");
+    const servers = res.servers || [];
+    installedServersCache = servers;
+    if ($("mcp-count-installed")) $("mcp-count-installed").textContent = servers.length;
+
+    let connectedCount = 0;
+    let disabledCount = 0;
+    let errorCount = 0;
+
+    container.innerHTML = "";
+    if (!servers.length) {
+      container.innerHTML = '<p class="hint">No MCP servers installed yet. Add one from the Marketplace or Custom Form.</p>';
+      updateMcpHeaderStats(0, 0, 0);
+      return;
+    }
+
+    servers.forEach(srv => {
+      const isEnabled = srv.enabled !== false;
+      const isConnected = isEnabled && srv.status !== "error";
+      if (!isEnabled) disabledCount++;
+      else if (srv.status === "error") errorCount++;
+      else connectedCount++;
+
+      const dotClass = !isEnabled ? "gray" : srv.status === "error" ? "red" : "green";
+      const scope = srv.scope || "user";
+      const transport = srv.command ? "stdio" : (srv.type || (srv.url ? "http" : "stdio"));
+      const tools = srv.tools || [];
+      const toolCount = srv.toolCount || srv.tools_count || tools.length;
+
+      const card = document.createElement("div");
+      card.className = "zcode-server-card";
+      card.id = `server-card-${srv.id}`;
+
+      let toolsHtml = "";
+      if (tools.length) {
+        const chips = tools.map(t => `
+          <div class="tool-chip">
+            <span class="tool-chip-name">${escapeHtml(t.name)}</span>
+            ${t.description ? `<div class="tool-chip-desc">${escapeHtml(t.description)}</div>` : ''}
+          </div>
+        `).join("");
+        toolsHtml = `
+          <details class="tools-accordion">
+            <summary class="tools-summary">🛠️ Discovered Tools (${tools.length})</summary>
+            <div class="tools-grid">${chips}</div>
+          </details>
+        `;
+      }
+
+      let failureHtml = "";
+      if (srv.status === "error" || srv.error) {
+        failureHtml = `
+          <div class="mcp-failure-box">
+            <span>⚠️</span>
+            <details style="flex:1;">
+              <summary>Connection Failure (${srv.failureKind || "process_exit"})</summary>
+              <pre>${escapeHtml(srv.error || "Failed to communicate with MCP server.")}</pre>
+            </details>
+          </div>
+        `;
+      }
+
+      const descLine = srv.command ? `${transport} · ${srv.command} ${(srv.args || []).join(' ')}` : (srv.url ? `${transport} · ${srv.url}` : transport);
+
+      card.innerHTML = `
+        <div class="zcode-server-main">
+          <div class="zcode-server-left">
+            <div class="zcode-cable-box">
+              <span>🔌</span>
+              <span class="zcode-status-dot-corner status-dot ${dotClass}" id="dot-${srv.id}"></span>
+            </div>
+            <div class="zcode-server-info">
+              <div class="zcode-server-header-line">
+                <span class="zcode-server-title">${escapeHtml(srv.name || srv.id)}</span>
+                <span class="scope-badge ${scope}">${scope}</span>
+                <span class="tool-count-badge" id="badge-tools-${srv.id}">${toolCount} tools</span>
+                <span class="transport-badge">${transport}</span>
+              </div>
+              <div class="zcode-server-desc" title="${escapeHtml(descLine)}">${escapeHtml(descLine)}</div>
+            </div>
+          </div>
+          <div class="zcode-server-actions">
+            <button type="button" class="btn-mcp-probe" data-id="${srv.id}" title="Test Connectivity & Tools">⚡ Test</button>
+            <button type="button" class="btn-mcp-edit" data-id="${srv.id}" title="Edit Configuration">✏️ Edit</button>
+            <label class="mcp-switch-label" title="Toggle Active / Disabled">
+              <input type="checkbox" class="mcp-toggle-input" data-id="${srv.id}" ${isEnabled ? "checked" : ""}>
+              <span class="mcp-switch-slider"></span>
+            </label>
+            <button type="button" class="btn-mcp-delete" data-id="${srv.id}" title="Remove Server">🗑️</button>
+          </div>
+        </div>
+        ${failureHtml}
+        ${toolsHtml}
+      `;
+
+      // Wire probe button
+      card.querySelector(".btn-mcp-probe")?.addEventListener("click", async () => {
+        const btn = card.querySelector(".btn-mcp-probe");
+        const dot = $(`dot-${srv.id}`);
+        if (btn) { btn.textContent = "⏳ Testing..."; btn.disabled = true; }
+        if (dot) dot.className = "zcode-status-dot-corner status-dot yellow";
+        try {
+          const probe = await call("mcp_probe", {id: srv.id});
+          if (probe.success) {
+            if (dot) dot.className = "zcode-status-dot-corner status-dot green";
+            if (btn) btn.textContent = `✓ ${probe.response_time_ms}ms`;
+            if (probe.tool_count != null && $(`badge-tools-${srv.id}`)) {
+              $(`badge-tools-${srv.id}`).textContent = `${probe.tool_count} tools`;
+            }
+            message("notice", `MCP Server '${srv.name || srv.id}' probe connected in ${probe.response_time_ms}ms!`);
+          } else {
+            if (dot) dot.className = "zcode-status-dot-corner status-dot red";
+            if (btn) btn.textContent = "✕ Error";
+            message("error", `MCP Server probe failed: ${probe.error || "Unknown error"}`);
+          }
+        } catch (err) {
+          if (dot) dot.className = "zcode-status-dot-corner status-dot red";
+          if (btn) btn.textContent = "✕ Error";
+          message("error", `Probe error: ${err.message || err}`);
+        }
+        setTimeout(() => { if (btn) { btn.textContent = "⚡ Test"; btn.disabled = false; } }, 3000);
+      });
+
+      // Wire toggle switch
+      card.querySelector(".mcp-toggle-input")?.addEventListener("change", async (e) => {
+        const checked = e.target.checked;
+        const dot = $(`dot-${srv.id}`);
+        try {
+          await call("mcp_toggle", {id: srv.id, enabled: checked});
+          if (dot) dot.className = `zcode-status-dot-corner status-dot ${checked ? "green" : "gray"}`;
+          message("notice", `MCP Server '${srv.name || srv.id}' ${checked ? "enabled" : "disabled"}.`);
+          updateMcpBadge();
+          loadMcpInstalled();
+        } catch (err) {
+          e.target.checked = !checked;
+          message("error", `Toggle failed: ${err.message || err}`);
+        }
+      });
+
+      // Wire edit button
+      card.querySelector(".btn-mcp-edit")?.addEventListener("click", () => {
+        editServerInForm(srv);
+      });
+
+      // Wire delete button
+      card.querySelector(".btn-mcp-delete")?.addEventListener("click", async () => {
+        if (!confirm(`Are you sure you want to remove MCP server '${srv.name || srv.id}'?`)) return;
+        try {
+          await call("mcp_uninstall", {id: srv.id});
+          message("notice", `Server '${srv.name || srv.id}' removed.`);
+          loadMcpInstalled();
+          updateMcpBadge();
+        } catch (err) {
+          message("error", `Delete failed: ${err.message || err}`);
+        }
+      });
+
+      container.appendChild(card);
+    });
+
+    updateMcpHeaderStats(connectedCount, disabledCount, errorCount);
+  } catch (e) {
+    container.innerHTML = `<p class="hint">Failed to load installed servers: ${e.message || e}</p>`;
+  }
+}
+
+function updateMcpHeaderStats(connected, disabled, error) {
+  if ($("mcp-stat-connected")) $("mcp-stat-connected").textContent = `${connected} Connected`;
+  if ($("mcp-stat-disabled")) $("mcp-stat-disabled").textContent = `${disabled} Disabled`;
+  if ($("mcp-stat-error")) $("mcp-stat-error").textContent = `${error} Error`;
+}
+
+// =========================================================================
+// ZCode McpServerForm: Dual-Mode Editor (UI & JSON) & 1-Click Presets
+// =========================================================================
+const MCP_PRESETS = {
+  sqlite: {
+    name: "sqlite-db",
+    transport: "stdio",
+    command: "uvx",
+    args: "mcp-server-sqlite --db-path ./analytics.db",
+    env: "",
+    scope: "user"
+  },
+  filesystem: {
+    name: "local-filesystem",
+    transport: "stdio",
+    command: "npx",
+    args: "-y @modelcontextprotocol/server-filesystem ~/Desktop ~/Documents",
+    env: "",
+    scope: "user"
+  },
+  fetch: {
+    name: "web-fetch",
+    transport: "stdio",
+    command: "uvx",
+    args: "mcp-server-fetch",
+    env: "",
+    scope: "user"
+  },
+  github: {
+    name: "github-mcp",
+    transport: "stdio",
+    command: "npx",
+    args: "-y @modelcontextprotocol/server-github",
+    env: '{\n  "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."\n}',
+    scope: "user"
+  },
+  puppeteer: {
+    name: "puppeteer-automation",
+    transport: "stdio",
+    command: "npx",
+    args: "-y @modelcontextprotocol/server-puppeteer",
+    env: "",
+    scope: "user"
+  },
+  memory: {
+    name: "knowledge-memory",
+    transport: "stdio",
+    command: "npx",
+    args: "-y @modelcontextprotocol/server-memory",
+    env: "",
+    scope: "user"
+  },
+  postgres: {
+    name: "postgres-mcp",
+    transport: "stdio",
+    command: "npx",
+    args: "-y @modelcontextprotocol/server-postgres postgresql://localhost/mydb",
+    env: "",
+    scope: "workspace"
+  },
+  sequentialthinking: {
+    name: "sequential-thinking",
+    transport: "stdio",
+    command: "npx",
+    args: "-y @modelcontextprotocol/server-sequentialthinking",
+    env: "",
+    scope: "user"
+  },
+  zcode: {
+    name: "zcode-agent-bridge",
+    transport: "stdio",
+    command: "uvx",
+    args: "zcode-mcp-bridge",
+    env: '{\n  "ZAI_API_KEY": ""\n}',
+    scope: "user"
+  }
+};
+
+let currentFormMode = "form";
+let formEditingServerId = null;
+
+// Wire preset chips
+document.querySelectorAll(".preset-chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    const key = chip.dataset.preset;
+    const p = MCP_PRESETS[key];
+    if (!p) return;
+    applyPresetToForm(p);
+  });
+});
+
+function applyPresetToForm(p) {
+  if ($("form-server-name")) $("form-server-name").value = p.name;
+  if ($("form-server-scope")) $("form-server-scope").value = p.scope || "user";
+  if ($("form-server-transport")) {
+    $("form-server-transport").value = p.transport;
+    toggleTransportFields(p.transport);
+  }
+  if ($("form-server-command")) $("form-server-command").value = p.command || "";
+  if ($("form-server-args")) $("form-server-args").value = p.args || "";
+  if ($("form-server-env")) $("form-server-env").value = p.env || "";
+  if ($("form-server-url")) $("form-server-url").value = p.url || "";
+  if ($("form-server-headers")) $("form-server-headers").value = p.headers || "";
+
+  syncFormToJsonDraft();
+  message("notice", `Applied preset '${p.name}' ⚡`);
+}
+
+function toggleTransportFields(transport) {
+  const isStdio = transport === "stdio";
+  if ($("form-stdio-fields")) $("form-stdio-fields").hidden = !isStdio;
+  if ($("form-http-fields")) $("form-http-fields").hidden = isStdio;
+}
+
+$("form-server-transport")?.addEventListener("change", (e) => {
+  toggleTransportFields(e.target.value);
+});
+
+// Mode switching (ZCode Form vs JSON)
+$("btn-mode-form")?.addEventListener("click", () => setEditorMode("form"));
+$("btn-mode-json")?.addEventListener("click", () => setEditorMode("json"));
+
+function setEditorMode(mode) {
+  currentFormMode = mode;
+  $("btn-mode-form")?.classList.toggle("active", mode === "form");
+  $("btn-mode-json")?.classList.toggle("active", mode === "json");
+
+  if (mode === "form") {
+    // Try to sync from JSON draft to form
+    try {
+      const draft = $("form-json-draft")?.value.trim();
+      if (draft) {
+        const parsed = JSON.parse(draft);
+        const [sid, conf] = Object.entries(parsed)[0] || [];
+        if (sid && conf) {
+          if ($("form-server-name")) $("form-server-name").value = sid;
+          if ($("form-server-command")) $("form-server-command").value = conf.command || "";
+          if ($("form-server-args")) $("form-server-args").value = Array.isArray(conf.args) ? conf.args.join(" ") : (conf.args || "");
+          if ($("form-server-env")) $("form-server-env").value = conf.env ? JSON.stringify(conf.env, null, 2) : "";
+          if ($("form-server-url")) $("form-server-url").value = conf.url || "";
+          if ($("form-server-headers")) $("form-server-headers").value = conf.headers ? JSON.stringify(conf.headers, null, 2) : "";
+          if ($("form-server-transport")) {
+            const tr = conf.type || (conf.command ? "stdio" : "http");
+            $("form-server-transport").value = tr;
+            toggleTransportFields(tr);
+          }
+        }
+      }
+      if ($("form-json-error")) $("form-json-error").hidden = true;
+    } catch (_) {}
+    if ($("mcp-server-form")) $("mcp-server-form").hidden = false;
+    if ($("mcp-json-editor-pane")) $("mcp-json-editor-pane").hidden = true;
+  } else {
+    // Sync from form to JSON draft
+    syncFormToJsonDraft();
+    if ($("mcp-server-form")) $("mcp-server-form").hidden = true;
+    if ($("mcp-json-editor-pane")) $("mcp-json-editor-pane").hidden = false;
+  }
+}
+
+function syncFormToJsonDraft() {
+  const name = $("form-server-name")?.value.trim() || "my-mcp-server";
+  const tr = $("form-server-transport")?.value || "stdio";
+  const obj = {};
+  if (tr === "stdio") {
+    const cmd = $("form-server-command")?.value.trim() || "npx";
+    const argsStr = $("form-server-args")?.value.trim() || "";
+    const args = argsStr ? argsStr.split(/\s+/) : [];
+    let env = {};
+    try {
+      const envStr = $("form-server-env")?.value.trim();
+      if (envStr) env = JSON.parse(envStr);
+    } catch (_) {}
+    obj[name] = { type: "stdio", command: cmd, args, env };
+  } else {
+    const url = $("form-server-url")?.value.trim() || "https://...";
+    let headers = {};
+    try {
+      const hStr = $("form-server-headers")?.value.trim();
+      if (hStr) headers = JSON.parse(hStr);
+    } catch (_) {}
+    obj[name] = { type: tr, url, headers };
+  }
+  if ($("form-json-draft")) $("form-json-draft").value = JSON.stringify(obj, null, 2);
+}
+
+$("btn-json-format")?.addEventListener("click", () => {
+  try {
+    const draft = $("form-json-draft")?.value.trim();
+    if (!draft) return;
+    const parsed = JSON.parse(draft);
+    $("form-json-draft").value = JSON.stringify(parsed, null, 2);
+    if ($("form-json-error")) $("form-json-error").hidden = true;
+  } catch (e) {
+    if ($("form-json-error")) {
+      $("form-json-error").textContent = `Syntax Error: ${e.message}`;
+      $("form-json-error").hidden = false;
+    }
+  }
+});
+
+function editServerInForm(srv) {
+  formEditingServerId = srv.id;
+  if ($("form-editing-label")) $("form-editing-label").textContent = `Editing '${srv.name || srv.id}'`;
+  if ($("form-server-name")) $("form-server-name").value = srv.id;
+  if ($("form-server-scope")) $("form-server-scope").value = srv.scope || "user";
+  const tr = srv.command ? "stdio" : (srv.type || "http");
+  if ($("form-server-transport")) {
+    $("form-server-transport").value = tr;
+    toggleTransportFields(tr);
+  }
+  if ($("form-server-command")) $("form-server-command").value = srv.command || "";
+  if ($("form-server-args")) $("form-server-args").value = Array.isArray(srv.args) ? srv.args.join(" ") : (srv.args || "");
+  if ($("form-server-env")) $("form-server-env").value = srv.env ? JSON.stringify(srv.env, null, 2) : "";
+  if ($("form-server-url")) $("form-server-url").value = srv.url || "";
+  if ($("form-server-headers")) $("form-server-headers").value = srv.headers ? JSON.stringify(srv.headers, null, 2) : "";
+  if ($("form-server-timeout")) $("form-server-timeout").value = srv.timeoutMs || 5000;
+
+  syncFormToJsonDraft();
+  showMcpTab("form");
+}
+
+$("btn-form-reset")?.addEventListener("click", () => {
+  formEditingServerId = null;
+  if ($("form-editing-label")) $("form-editing-label").textContent = "New Server Configuration";
+  $("mcp-server-form")?.reset();
+  toggleTransportFields("stdio");
+  if ($("form-probe-banner")) $("form-probe-banner").hidden = true;
+});
+
+// Probe test button in Form
+$("btn-form-probe")?.addEventListener("click", async () => {
+  const banner = $("form-probe-banner");
+  const txt = $("form-probe-text");
+  const icon = $("form-probe-icon");
+  if (!banner || !txt) return;
+
+  const name = $("form-server-name")?.value.trim() || "test-server";
+  const tr = $("form-server-transport")?.value || "stdio";
+  const cmd = $("form-server-command")?.value.trim() || "";
+  const args = $("form-server-args")?.value.trim() || "";
+  const url = $("form-server-url")?.value.trim() || "";
+
+  let env = {};
+  try {
+    const envStr = $("form-server-env")?.value.trim();
+    if (envStr) env = JSON.parse(envStr);
+  } catch (_) {}
+
+  banner.hidden = false;
+  banner.className = "probe-banner testing";
+  icon.textContent = "⏳";
+  txt.textContent = "Testing connection...";
+
+  try {
+    const res = await call("mcp_probe", {
+      config: {
+        name,
+        type: tr,
+        command: cmd,
+        args,
+        env,
+        url
+      }
+    });
+    if (res.success) {
+      banner.className = "probe-banner success";
+      icon.textContent = "✅";
+      txt.textContent = `Connected! Latency: ${res.response_time_ms}ms · Tools discovered: ${res.tool_count || 0}`;
+    } else {
+      banner.className = "probe-banner error";
+      icon.textContent = "✕";
+      txt.textContent = `Failed (${res.failureKind || "error"}): ${res.error || "Could not reach server"}`;
+    }
+  } catch (err) {
+    banner.className = "probe-banner error";
+    icon.textContent = "✕";
+    txt.textContent = `Probe error: ${err.message || err}`;
+  }
+});
+
+// Save from Form
+$("mcp-server-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = $("form-server-name").value.trim();
+  const scope = $("form-server-scope").value;
+  const tr = $("form-server-transport").value;
+  const timeoutMs = parseInt($("form-server-timeout").value, 10) || 5000;
+  const cmd = $("form-server-command")?.value.trim() || "";
+  const args = $("form-server-args")?.value.trim() || "";
+  const url = $("form-server-url")?.value.trim() || "";
+
+  let env = {};
+  try {
+    const envStr = $("form-server-env")?.value.trim();
+    if (envStr) env = JSON.parse(envStr);
+  } catch (_) {}
+
+  let headers = {};
+  try {
+    const hStr = $("form-server-headers")?.value.trim();
+    if (hStr) headers = JSON.parse(hStr);
+  } catch (_) {}
+
+  try {
+    await call("mcp_install", {
+      id,
+      config: {
+        name: id,
+        scope,
+        type: tr,
+        command: cmd,
+        args,
+        env,
+        url,
+        headers,
+        timeoutMs
+      }
+    });
+    message("notice", `MCP server '${id}' saved and connected successfully! 🚀`);
+    showMcpTab("installed");
+    updateMcpBadge();
+  } catch (err) {
+    message("error", `Save failed: ${err.message || err}`);
+  }
+});
+
+// Save from JSON Draft
+$("btn-save-json-draft")?.addEventListener("click", async () => {
+  const draft = $("form-json-draft")?.value.trim();
+  if (!draft) return;
+  try {
+    const parsed = JSON.parse(draft);
+    const [id, conf] = Object.entries(parsed)[0] || [];
+    if (!id || !conf) {
+      throw new Error("JSON must contain an object with server ID as key.");
+    }
+    await call("mcp_install", { id, config: conf });
+    message("notice", `MCP server '${id}' saved from JSON successfully! 🚀`);
+    showMcpTab("installed");
+    updateMcpBadge();
+  } catch (e) {
+    if ($("form-json-error")) {
+      $("form-json-error").textContent = `Error: ${e.message}`;
+      $("form-json-error").hidden = false;
+    }
+  }
+});
+
+$("btn-cancel-json-draft")?.addEventListener("click", () => setEditorMode("form"));
+
+// =========================================================================
+// Raw Config Editor View (~/.mika/mcp_servers.json)
+// =========================================================================
+async function loadMcpRaw() {
+  const ta = $("raw-config-textarea");
+  if (!ta) return;
+  ta.value = "Loading raw configuration...";
+  try {
+    const res = await call("mcp_raw_config");
+    ta.value = res.raw || "{}";
+    if ($("raw-save-status")) $("raw-save-status").hidden = true;
+  } catch (e) {
+    ta.value = `Error loading raw config: ${e.message || e}`;
+  }
+}
+
+$("btn-format-raw")?.addEventListener("click", () => {
+  const ta = $("raw-config-textarea");
+  if (!ta) return;
+  try {
+    const parsed = JSON.parse(ta.value);
+    ta.value = JSON.stringify(parsed, null, 2);
+  } catch (e) {
+    showRawStatus(`JSON syntax error: ${e.message}`, "error");
+  }
+});
+
+$("btn-reload-raw")?.addEventListener("click", loadMcpRaw);
+
+$("btn-save-raw")?.addEventListener("click", async () => {
+  const ta = $("raw-config-textarea");
+  if (!ta) return;
+  try {
+    const res = await call("mcp_save_raw", {raw: ta.value});
+    if (res.status === "ok") {
+      showRawStatus(`Config saved successfully! Loaded ${res.count} servers.`, "success");
+      updateMcpBadge();
+    } else {
+      showRawStatus(`Failed to save: ${res.error}`, "error");
+    }
+  } catch (e) {
+    showRawStatus(`Error: ${e.message || e}`, "error");
+  }
+});
+
+function showRawStatus(msg, type) {
+  const banner = $("raw-save-status");
+  if (!banner) return;
+  banner.textContent = msg;
+  banner.className = `raw-status-banner ${type}`;
+  banner.hidden = false;
+}
+
+// =========================================================================
+// Marketplace Catalog & Category Chips
+// =========================================================================
 function renderMcpCards(list) {
   const grid = $("mcp-market-grid");
   if (!grid) return;
   grid.innerHTML = "";
   if (!list.length) {
-    grid.innerHTML = '<p class="hint">Серверы не найдены. Попробуйте другой запрос или ручную установку.</p>';
+    grid.innerHTML = '<p class="hint">No matching MCP servers found. Try another query or add custom server.</p>';
     return;
   }
   list.forEach(srv => {
@@ -771,11 +1374,12 @@ function renderMcpCards(list) {
       const action = srv.installed ? "mcp_uninstall" : "mcp_install";
       try {
         await call(action, {id: srv.id});
-        message("notice", `MCP server '${srv.name || srv.id}' ${srv.installed ? 'uninstalled' : 'installed'} successfully!`);
+        message("notice", `MCP server '${srv.name || srv.id}' ${srv.installed ? 'uninstalled' : 'installed'} successfully! ⚡`);
       } catch (err) {
         message("error", `MCP ${action} failed: ${err.message || err}`);
       }
       loadMcpMarket();
+      loadMcpInstalled();
       updateMcpBadge();
     };
     grid.appendChild(card);
@@ -837,6 +1441,7 @@ async function loadMcpMarket() {
   try {
     const res = await call("mcp_market");
     currentMarketList = res.marketplace || [];
+    if ($("mcp-count-market")) $("mcp-count-market").textContent = `${currentMarketList.length}+`;
     filterAndRenderMcpMarket();
   } catch (e) {
     grid.innerHTML = `<p class="hint">Cannot reach MCP service: ${e.message || e}</p>`;
@@ -846,92 +1451,34 @@ async function loadMcpMarket() {
 async function searchMcpMarket(query) {
   const grid = $("mcp-market-grid");
   if (!grid) return;
-  grid.innerHTML = '<p class="hint">🔍 Поиск по GitHub & Smithery MCP источникам...</p>';
+  grid.innerHTML = '<p class="hint">🔍 Searching GitHub & Smithery MCP sources...</p>';
   try {
     const res = await call("mcp_search", {query});
     currentMarketList = res.results || [];
     filterAndRenderMcpMarket();
   } catch (e) {
-    grid.innerHTML = `<p class="hint">Ошибка поиска: ${e.message || e}</p>`;
-  }
-}
-
-async function loadMcpInstalled() {
-  const grid = $("mcp-installed-grid");
-  if (!grid) return;
-  try {
-    const res = await call("mcp_servers");
-    grid.innerHTML = "";
-    const list = res.servers || [];
-    if (!list.length) {
-      grid.innerHTML = '<p class="hint">No installed MCP servers.</p>';
-      return;
-    }
-    list.forEach(srv => {
-      const card = document.createElement("div");
-      card.className = "mcp-card";
-      card.innerHTML = `
-        <div class="mcp-card-top">
-          <span class="mcp-icon">⚙️</span>
-          <div>
-            <div class="mcp-card-title">${srv.name || srv.id}</div>
-            <div class="mcp-card-desc">Command: ${srv.command} ${(srv.args || []).join(' ')}</div>
-          </div>
-        </div>
-        <div class="mcp-card-actions">
-          <span class="mcp-badge ${srv.enabled ? 'active' : ''}">${srv.enabled ? 'Enabled' : 'Disabled'}</span>
-          <button type="button" class="mcp-action-btn uninstall" data-id="${srv.id}">Remove</button>
-        </div>
-      `;
-      card.querySelector("button").onclick = async () => {
-        try {
-          await call("mcp_uninstall", {id: srv.id});
-          message("notice", `MCP server '${srv.name || srv.id}' removed.`);
-        } catch (err) {
-          message("error", `Failed to remove: ${err.message || err}`);
-        }
-        loadMcpInstalled();
-        updateMcpBadge();
-      };
-      grid.appendChild(card);
-    });
-  } catch (e) {
-    grid.innerHTML = `<p class="hint">Error: ${e.message || e}</p>`;
+    grid.innerHTML = `<p class="hint">Search error: ${e.message || e}</p>`;
   }
 }
 
 async function updateMcpBadge() {
   try {
     const res = await call("mcp_servers");
-    const count = (res.servers || []).filter(s => s.enabled).length;
+    const count = (res.servers || []).filter(s => s.enabled !== false).length;
     if ($("mcp-active-count")) $("mcp-active-count").textContent = `${count} active`;
   } catch (_) {}
 }
 
-$("mcp-manual-form")?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const id = $("mcp-server-id").value.trim();
-  const url = $("mcp-server-url").value.trim();
-  const cmd = $("mcp-server-cmd").value.trim();
-  let env = {};
-  try {
-    const envStr = $("mcp-server-env").value.trim();
-    if (envStr) env = JSON.parse(envStr);
-  } catch (_) {}
-
-  try {
-    await call("mcp_install", {id, config: {name: id, url, command: cmd, env}});
-    message("notice", `MCP server '${id}' installed successfully!`);
-    showMcpTab("installed");
-    updateMcpBadge();
-  } catch (err) {
-    message("error", `Install failed: ${err.message || err}`);
-  }
-});
-
 $("btn-sync-github")?.addEventListener("click", () => {
   const q = $("mcp-search-query")?.value.trim() || "topic:mcp-server";
   searchMcpMarket(q);
+});
+
+$("mcp-search-query")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    searchMcpMarket(e.target.value.trim() || "topic:mcp-server");
+  }
 });
 
 $("mcp-search-query")?.addEventListener("keydown", (e) => {
@@ -1354,7 +1901,383 @@ document.querySelectorAll(".welcome-card").forEach(card => {
   });
 });
 
+// =========================================================================
+// DeepSeek Harness Superagent (DSH) Implementation (docs/000 - docs/005)
+// =========================================================================
+
+function switchDshView(viewName) {
+  const isTasks = viewName === "tasks";
+  if ($("compose")) $("compose").hidden = !isTasks;
+  const cols = document.querySelector(".columns");
+  if (cols) cols.hidden = !isTasks;
+
+  const panels = {
+    triggers: $("dsh-triggers-panel"),
+    evals: $("dsh-evals-panel"),
+    execution: $("dsh-execution-panel"),
+    prompts: $("dsh-prompts-panel")
+  };
+  Object.keys(panels).forEach(k => {
+    if (panels[k]) panels[k].hidden = (k !== viewName);
+  });
+
+  if (viewName === "triggers") loadDshTriggers("all");
+  if (viewName === "evals") loadDshEvals();
+  if (viewName === "execution") loadDshTickets("all");
+  if (viewName === "prompts") loadDshPrompts();
+}
+
+async function loadDshOverview() {
+  try {
+    const res = await call("dsh_overview");
+    if (!res || res.status !== "ok" || !res.overview) return;
+    const ov = res.overview;
+
+    // Q1: Needs Me Now
+    const person = ov.person || [];
+    const badgeQ1 = $("dsh-badge-needs-me");
+    const bodyQ1 = $("dsh-body-needs-me");
+    if (badgeQ1) {
+      badgeQ1.textContent = person.length ? `${person.length} Needs Action` : "0 Needs Action";
+      badgeQ1.className = `dsh-q-badge ${person.length ? 'warning' : 'success'}`;
+    }
+    if (bodyQ1) {
+      if (!person.length) {
+        bodyQ1.innerHTML = '<p class="hint" style="margin:4px 0;">Quiet: No human intervention needed. Running autonomously.</p>';
+      } else {
+        bodyQ1.innerHTML = person.map(t => `
+          <div class="dsh-ticket-row-mini">
+            <span class="dsh-ticket-title-mini" title="${t.title}">${t.title}</span>
+            <button type="button" class="dsh-btn-action-mini" data-ticket-id="${t.id}" data-action="${t.stage?.action || 'review'}">
+              ${t.stage?.action === 'answer' ? 'Answer' : (t.stage?.action === 'blocked' ? 'Retry' : 'Approve')}
+            </button>
+          </div>
+        `).join("");
+
+        bodyQ1.querySelectorAll(".dsh-btn-action-mini").forEach(btn => {
+          btn.onclick = async (e) => {
+            e.stopPropagation();
+            const tid = btn.dataset.ticketId;
+            const act = btn.dataset.action;
+            if (act === "blocked" || act === "failed") {
+              await call("dsh_ticket_retry", {ticket_id: tid});
+              message("notice", `Ticket '${tid}' restarted!`);
+            } else if (act === "answer") {
+              const ans = prompt("Enter your decision/answer for worker:");
+              if (ans) {
+                await call("dsh_ticket_answer", {ticket_id: tid, answer: ans});
+                message("notice", "Answer sent to ticket worker.");
+              }
+            } else {
+              await call("dsh_ticket_approve", {ticket_id: tid});
+              message("notice", `Ticket '${tid}' approved & delivered! 😻`);
+            }
+            loadDshOverview();
+          };
+        });
+      }
+    }
+
+    // Q2: System Health & Executor Load
+    const flow = ov.flow || {};
+    if ($("flow-received")) $("flow-received").textContent = flow.received || 0;
+    if ($("flow-filtered")) $("flow-filtered").textContent = flow.filtered || 0;
+    if ($("flow-judged")) $("flow-judged").textContent = flow.judged || 0;
+    if ($("flow-accepted")) $("flow-accepted").textContent = flow.accepted || 0;
+    if ($("flow-dropped")) $("flow-dropped").textContent = flow.dropped || 0;
+
+    const exec = ov.executor || {};
+    const paused = !!exec.paused;
+    const btnPause = $("dsh-btn-pause");
+    if (btnPause) {
+      btnPause.textContent = paused ? "▶ Resume Engine" : "⏸ Pause Engine";
+      btnPause.classList.toggle("paused", paused);
+    }
+    const dot = $("dsh-executor-dot");
+    if (dot) dot.className = `status-dot ${paused ? 'yellow' : (exec.running > 0 ? 'green' : 'gray')}`;
+    const txt = $("dsh-executor-text");
+    if (txt) {
+      txt.textContent = paused ? "Paused (Quiet)" : `Running: ${exec.running}/${exec.maxWorkers || 4} workers`;
+    }
+    const fill = $("dsh-load-fill");
+    if (fill) {
+      const pct = Math.min(100, Math.round(((exec.running || 0) / (exec.maxWorkers || 4)) * 100));
+      fill.style.width = `${pct}%`;
+    }
+
+    // Q3: Trace History
+    const ended = ov.ended || [];
+    const bodyQ3 = $("dsh-body-history");
+    const badgeQ3 = $("dsh-badge-trace");
+    if (badgeQ3) badgeQ3.textContent = `${ov.total_tickets || 3} Total Tickets`;
+    if (bodyQ3) {
+      if (!ended.length) {
+        bodyQ3.innerHTML = '<p class="hint" style="margin:4px 0;">No completed tickets in history yet.</p>';
+      } else {
+        bodyQ3.innerHTML = ended.slice(0, 2).map(t => `
+          <div class="dsh-ticket-row-mini">
+            <span class="dsh-ticket-title-mini" title="${t.title}">${t.title}</span>
+            <span class="dsh-stage-badge ended" style="font-size:9px; padding:2px 4px;">Delivered</span>
+          </div>
+        `).join("");
+      }
+    }
+  } catch (err) {
+    console.warn("DSH overview load error:", err);
+  }
+}
+
+async function loadDshTriggers(filter) {
+  const container = $("dsh-triggers-list");
+  if (!container) return;
+  container.innerHTML = '<p class="hint">Loading triggers and threads from sources...</p>';
+  try {
+    const res = await call("dsh_triggers", {filter});
+    const triggers = res.triggers || [];
+    if (!triggers.length) {
+      container.innerHTML = '<p class="hint">No triggers found for current filter.</p>';
+      return;
+    }
+    container.innerHTML = triggers.map(tr => `
+      <div class="mcp-card" style="margin-bottom:12px; display:block;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+          <div>
+            <span class="mcp-badge active">${tr.source.toUpperCase()}</span>
+            <span class="mcp-badge" style="background:#1e293b; color:#cbd5e1;">${tr.human ? '👤 ' + tr.actor.id : '🤖 ' + tr.actor.id}</span>
+            <span class="mcp-badge" style="background:#1e293b; color:#38bdf8;">${tr.addressed || 'direct'}</span>
+          </div>
+          <span style="font-size:11px; color:#64748b;">${new Date(tr.at).toLocaleTimeString()}</span>
+        </div>
+        <p style="font-size:13px; color:#f1f5f9; margin:4px 0 8px; font-weight:500;">${tr.text}</p>
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.06); padding-top:8px; font-size:11px; color:#94a3b8;">
+          <span>Thread: <code>${tr.threads?.[0]?.id || 'main'}</code> • Disposition: <b>${tr.disposition?.decisionId ? 'Decided' : 'Queued'}</b></span>
+          <button type="button" class="mini-btn dsh-btn-requeue" data-trig-id="${tr.id}">🔄 Re-evaluate</button>
+        </div>
+      </div>
+    `).join("");
+
+    container.querySelectorAll(".dsh-btn-requeue").forEach(b => {
+      b.onclick = async () => {
+        await call("dsh_requeue", {trigger_id: b.dataset.trigId});
+        message("notice", `Trigger '${b.dataset.trigId}' requeued for policy evaluation.`);
+        loadDshTriggers(filter);
+        loadDshOverview();
+      };
+    });
+  } catch (err) {
+    container.innerHTML = `<p class="hint">Error: ${err.message || err}</p>`;
+  }
+}
+
+async function loadDshEvals() {
+  const container = $("dsh-evals-list");
+  const rulesBox = $("dsh-rules-list");
+  if (!container) return;
+  container.innerHTML = '<p class="hint">Loading DeepSeek R1 evaluation traces...</p>';
+  try {
+    const res = await call("dsh_evals");
+    const evals = res.evals || [];
+    const policy = res.policy || {};
+
+    if (rulesBox && policy.rules) {
+      rulesBox.innerHTML = policy.rules.map(r => `
+        <div style="background:rgba(30,41,59,0.5); border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:8px 10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <strong style="font-size:12px; color:#38bdf8;">${r.name}</strong>
+            <span class="status-dot green"></span>
+          </div>
+          <p style="font-size:11px; color:#94a3b8; margin:0;">${r.desc}</p>
+        </div>
+      `).join("");
+    }
+
+    if (!evals.length) {
+      container.innerHTML = '<p class="hint">No recent evaluation records found.</p>';
+      return;
+    }
+
+    container.innerHTML = evals.map(ev => `
+      <div class="mcp-card" style="margin-bottom:14px; display:block;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div style="display:flex; gap:6px; align-items:center;">
+            <span class="dsh-stage-badge ${ev.decision === 'accept' ? 'working' : 'person'}">${ev.decision.toUpperCase()}</span>
+            <span style="font-size:12px; color:#cbd5e1; font-weight:600;">Trigger: <code>${ev.triggerId}</code></span>
+          </div>
+          <span style="font-size:11px; color:#64748b;">${new Date(ev.at).toLocaleTimeString()}</span>
+        </div>
+        <div class="dsh-r1-box">
+          <strong>DeepSeek R1 Chain-of-Thought Reasoning:</strong>
+          ${ev.r1_thought}
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#94a3b8; margin-top:6px;">
+          <div>Mandate Scope: ${ev.mandate?.scope?.map(s => `<span class="mcp-badge" style="background:#1e293b; color:#38bdf8;">${s}</span>`).join(" ") || 'None'}</div>
+          <div>Matched Rules: ${ev.matchedRules?.join(", ") || 'Default'}</div>
+        </div>
+      </div>
+    `).join("");
+  } catch (err) {
+    container.innerHTML = `<p class="hint">Error: ${err.message || err}</p>`;
+  }
+}
+
+async function loadDshTickets(stage) {
+  const container = $("dsh-tickets-list");
+  if (!container) return;
+  container.innerHTML = '<p class="hint">Loading tickets and worker fleet status...</p>';
+  try {
+    const res = await call("dsh_tickets", {stage});
+    const tickets = res.tickets || [];
+    if (!tickets.length) {
+      container.innerHTML = '<p class="hint">No execution tickets match current filter.</p>';
+      return;
+    }
+
+    container.innerHTML = tickets.map(t => {
+      const st = t.stage?.stage || 'working';
+      const act = t.stage?.action || '';
+      return `
+        <div class="mcp-card" style="margin-bottom:12px; display:block;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+              <span class="dsh-stage-badge ${st}">${st.toUpperCase()}${act ? ' : ' + act.toUpperCase() : ''}</span>
+              <span style="font-size:11px; color:#94a3b8; margin-left:8px;">ID: <code>${t.id}</code></span>
+            </div>
+            <span style="font-size:11px; color:#64748b;">${new Date(t.updated_at || t.created_at).toLocaleTimeString()}</span>
+          </div>
+          <h4 style="color:#f1f5f9; font-size:14px; margin:8px 0 4px;">${t.title}</h4>
+          <p style="font-size:12px; color:#94a3b8; margin:0 0 8px;">Actor: <b>${t.actor || 'User'}</b> • Policy: <b>${t.policyVersion || 'default'}</b></p>
+          ${t.attention ? `<div style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); border-radius:6px; padding:8px 10px; margin-bottom:8px; font-size:12px; color:#fbbf24;">⚠️ <b>Waiting for Person:</b> ${t.attention}</div>` : ''}
+          ${t.diff ? `<details style="margin-top:6px;"><summary style="font-size:11px; color:#38bdf8; cursor:pointer;">Inspect Code / Prompt Diff</summary><pre class="dsh-prompt-diff" style="margin-top:4px;">${t.diff}</pre></details>` : ''}
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+            ${(st === 'person' && act === 'review') ? `<button type="button" class="mcp-action-btn install dsh-btn-approve" data-id="${t.id}">Approve & Deliver 😻</button>` : ''}
+            ${(st === 'person' && act === 'answer') ? `<button type="button" class="mcp-action-btn install dsh-btn-answer" data-id="${t.id}">Provide Answer</button>` : ''}
+            ${(st === 'person' && (act === 'blocked' || act === 'failed')) ? `<button type="button" class="mcp-action-btn uninstall dsh-btn-retry" data-id="${t.id}">Retry Ticket 🔄</button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    container.querySelectorAll(".dsh-btn-approve").forEach(b => {
+      b.onclick = async () => {
+        await call("dsh_ticket_approve", {ticket_id: b.dataset.id});
+        message("notice", `Ticket '${b.dataset.id}' approved and delivered! 😻`);
+        loadDshTickets(stage);
+        loadDshOverview();
+      };
+    });
+
+    container.querySelectorAll(".dsh-btn-retry").forEach(b => {
+      b.onclick = async () => {
+        await call("dsh_ticket_retry", {ticket_id: b.dataset.id});
+        message("notice", `Ticket '${b.dataset.id}' restarted!`);
+        loadDshTickets(stage);
+        loadDshOverview();
+      };
+    });
+
+    container.querySelectorAll(".dsh-btn-answer").forEach(b => {
+      b.onclick = async () => {
+        const ans = prompt("Enter your answer/decision for this ticket:");
+        if (ans) {
+          await call("dsh_ticket_answer", {ticket_id: b.dataset.id, answer: ans});
+          message("notice", "Answer recorded.");
+          loadDshTickets(stage);
+          loadDshOverview();
+        }
+      };
+    });
+  } catch (err) {
+    container.innerHTML = `<p class="hint">Error: ${err.message || err}</p>`;
+  }
+}
+
+async function loadDshPrompts() {
+  try {
+    const res = await call("dsh_prompts");
+    if (!res || res.status !== "ok") return;
+    if ($("dsh-team-prompt-input")) $("dsh-team-prompt-input").value = res.team_custom || "";
+    if ($("dsh-assembled-prompt-view")) $("dsh-assembled-prompt-view").textContent = res.assembled || "";
+  } catch (err) {
+    console.warn("Failed to load prompts:", err);
+  }
+}
+
+$("dsh-btn-save-prompt")?.addEventListener("click", async () => {
+  const text = $("dsh-team-prompt-input")?.value || "";
+  try {
+    await call("dsh_save_prompt", {section: "team_custom", text});
+    message("notice", "Team custom directives saved successfully! ⚡");
+    loadDshPrompts();
+  } catch (err) {
+    message("error", `Save prompt error: ${err.message || err}`);
+  }
+});
+
+$("dsh-btn-pause")?.addEventListener("click", async () => {
+  try {
+    const res = await call("dsh_pause");
+    message("notice", res.paused ? "Superagent Executor Paused." : "Superagent Executor Resumed! 🚀");
+    loadDshOverview();
+  } catch (err) {
+    message("error", `Pause error: ${err.message || err}`);
+  }
+});
+
+$("dsh-quick-approve")?.addEventListener("click", async () => {
+  try {
+    await call("dsh_ticket_approve", {ticket_id: "ticket-anytest-01"});
+    message("notice", "Mockup for anytest.dev approved and delivered! 😻🐾");
+    loadDshOverview();
+  } catch (err) {
+    message("error", err.message || err);
+  }
+});
+
+// Tab navigation bindings for DSH
+$("nav-dsh-triggers")?.addEventListener("click", () => {
+  setActiveNav("nav-dsh-triggers");
+  switchDshView("triggers");
+});
+
+$("nav-dsh-evals")?.addEventListener("click", () => {
+  setActiveNav("nav-dsh-evals");
+  switchDshView("evals");
+});
+
+$("nav-dsh-execution")?.addEventListener("click", () => {
+  setActiveNav("nav-dsh-execution");
+  switchDshView("execution");
+});
+
+$("nav-dsh-prompts")?.addEventListener("click", () => {
+  setActiveNav("nav-dsh-prompts");
+  switchDshView("prompts");
+});
+
+$("nav-tasks")?.addEventListener("click", () => {
+  setActiveNav("nav-tasks");
+  switchDshView("tasks");
+});
+
+// Trigger & Ticket filter buttons
+document.querySelectorAll(".dsh-trig-filter").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".dsh-trig-filter").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    loadDshTriggers(btn.dataset.filter || "all");
+  };
+});
+
+document.querySelectorAll(".dsh-ticket-filter").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".dsh-ticket-filter").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    loadDshTickets(btn.dataset.stage || "all");
+  };
+});
+
 render();
 scheduleUpdate(true);
 updateMcpBadge();
+loadDshOverview();
 

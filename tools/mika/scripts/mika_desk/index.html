@@ -15,10 +15,13 @@
       <strong><img src="/mika-logo.png" width="36" height="36" alt="">Mika AGY 2.0</strong>
       <span class="brand-tag">DeepSeek × ZCode</span>
       <nav class="top-nav">
-        <button type="button" class="nav-pill" id="nav-new-task">➕ New Task</button>
-        <button type="button" class="nav-pill active" id="nav-tasks">📱 Tasks</button>
+        <button type="button" class="nav-pill active" id="nav-tasks">📱 Tasks Desk</button>
+        <button type="button" class="nav-pill" id="nav-dsh-triggers">⚡ Triggers & Threads</button>
+        <button type="button" class="nav-pill" id="nav-dsh-evals">🧠 Policy & Eval</button>
+        <button type="button" class="nav-pill" id="nav-dsh-execution">🚀 Execution & Tickets</button>
         <button type="button" class="nav-pill" id="nav-coder">🧑‍💻 Coder Team</button>
-        <button type="button" class="nav-pill" id="nav-mcp">🧩 MCP Hub</button>
+        <button type="button" class="nav-pill" id="nav-mcp">🧩 MCP Hub (<span id="top-mcp-count">25</span>)</button>
+        <button type="button" class="nav-pill" id="nav-dsh-prompts">📜 Prompts & Skills</button>
         <button type="button" class="nav-pill" id="nav-preview">👁️ Live Sandbox</button>
       </nav>
       <div class="header-status-group">
@@ -28,6 +31,84 @@
     </div>
   </header>
   <main class="wrap">
+    <!-- DeepSeek Harness Superagent 3-Questions Supervisory Banner (docs/000 & docs/005) -->
+    <div id="dsh-super-banner" class="dsh-super-banner">
+      <div class="dsh-banner-header">
+        <div class="dsh-title-group">
+          <span class="dsh-icon">⚡</span>
+          <div>
+            <strong>DeepSeek Superagent Supervisor</strong>
+            <span class="dsh-sub">Autonomous Orchestrator & Multi-Worker Fleet</span>
+          </div>
+        </div>
+        <div class="dsh-banner-actions">
+          <div class="dsh-executor-status">
+            <span class="status-dot green" id="dsh-executor-dot"></span>
+            <span id="dsh-executor-text">Running: 1/4 workers</span>
+          </div>
+          <button type="button" id="dsh-btn-pause" class="dsh-pause-btn" title="Pause or resume executor processing">⏸ Pause Engine</button>
+        </div>
+      </div>
+
+      <div class="dsh-questions-grid">
+        <!-- Question 1: Does anything need me now? -->
+        <div class="dsh-q-card" id="dsh-card-q1">
+          <div class="dsh-q-head">
+            <span class="dsh-q-num">1</span>
+            <div class="dsh-q-meta">
+              <span class="dsh-q-title">Does anything need me now?</span>
+              <span class="dsh-q-badge warning" id="dsh-badge-needs-me">1 Needs Action</span>
+            </div>
+          </div>
+          <div class="dsh-q-body" id="dsh-body-needs-me">
+            <div class="dsh-ticket-row-mini">
+              <span class="dsh-ticket-title-mini">Interactive AnyTest.dev High-Converting Landing Page</span>
+              <button type="button" class="dsh-btn-action-mini" id="dsh-quick-approve">Approve</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Question 2: Is the system healthy and doing the right things? -->
+        <div class="dsh-q-card" id="dsh-card-q2">
+          <div class="dsh-q-head">
+            <span class="dsh-q-num">2</span>
+            <div class="dsh-q-meta">
+              <span class="dsh-q-title">Is system healthy & load optimal?</span>
+              <span class="dsh-q-badge success" id="dsh-badge-health">● Healthy (24h Flow: 14)</span>
+            </div>
+          </div>
+          <div class="dsh-q-body">
+            <div class="dsh-flow-row">
+              <span class="dsh-metric"><b id="flow-received">14</b> Recv</span>
+              <span class="dsh-metric"><b id="flow-filtered">3</b> Filtered</span>
+              <span class="dsh-metric"><b id="flow-judged">11</b> Judged</span>
+              <span class="dsh-metric success"><b id="flow-accepted">8</b> Accepted</span>
+              <span class="dsh-metric"><b id="flow-dropped">0</b> Dropped</span>
+            </div>
+            <div class="dsh-executor-load-bar">
+              <div class="dsh-load-fill" id="dsh-load-fill" style="width: 25%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Question 3: What is the history of one piece of work? -->
+        <div class="dsh-q-card" id="dsh-card-q3">
+          <div class="dsh-q-head">
+            <span class="dsh-q-num">3</span>
+            <div class="dsh-q-meta">
+              <span class="dsh-q-title">What is the history of work?</span>
+              <span class="dsh-q-badge info" id="dsh-badge-trace">3 Recent Tickets</span>
+            </div>
+          </div>
+          <div class="dsh-q-body" id="dsh-body-history">
+            <div class="dsh-ticket-row-mini">
+              <span class="dsh-ticket-title-mini">Multi-Agent Coder Team Architecture</span>
+              <span class="dsh-stage-badge ended" style="font-size:9px; padding:2px 4px;">Delivered</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="heading">
       <div><h1 data-i18n="heading">Task desk</h1><p data-i18n="intro">Hand tasks to Mika Agent on macOS, follow progress and inspect deliverables.</p></div>
       <div class="refresh"><small id="updated" data-i18n="autoUpdate">Updates automatically</small><button id="refresh" type="button" data-i18n="refreshNow">Update now</button></div>
@@ -214,68 +295,271 @@
         <button class="stop" id="cancel" type="button" hidden data-i18n="cancelTask">Cancel task</button>
       </section>
     </div>
+
+    <!-- DSH Triggers & Threads Panel (docs/001 & docs/005) -->
+    <div id="dsh-triggers-panel" class="panel dsh-view-panel" hidden>
+      <div class="dsh-view-header">
+        <h2>⚡ Inbound Triggers & Superagent Threads</h2>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="mini-btn dsh-trig-filter active" data-filter="all">All Threads</button>
+          <button type="button" class="mini-btn dsh-trig-filter" data-filter="subscribed">Subscribed</button>
+          <button type="button" class="mini-btn dsh-trig-filter" data-filter="evaluating">Evaluating</button>
+          <button type="button" class="mini-btn dsh-trig-filter" data-filter="recent">New 24h</button>
+        </div>
+      </div>
+      <p class="hint">Events originating from Desk chat, GitHub webhooks, and Feishu channels. Triggers are evaluated through R1 policy verification.</p>
+      <div id="dsh-triggers-list" class="dsh-items-container">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- DSH Policy & Eval Panel (docs/002 & docs/005) -->
+    <div id="dsh-evals-panel" class="panel dsh-view-panel" hidden>
+      <div class="dsh-view-header">
+        <h2>🧠 Policy Assessment & DeepSeek R1 Evaluation Traces</h2>
+        <span class="mcp-badge active" id="dsh-policy-version">dsh-policy-v2.1</span>
+      </div>
+      <div class="policy-rules-box" style="margin-bottom:16px;">
+        <strong style="color:#e2e8f0; font-size:13px; display:block; margin-bottom:8px;">Active Operational Mandate & Policy Rules</strong>
+        <div id="dsh-rules-list" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px;">
+          <!-- Rules rendered dynamically -->
+        </div>
+      </div>
+      <h3 style="color:#f1f5f9; font-size:15px; margin:16px 0 8px;">Recent Evaluation Judgements (R1 Chain-of-Thought)</h3>
+      <div id="dsh-evals-list" class="dsh-items-container">
+        <!-- Evals rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- DSH Execution & Tickets Panel (docs/003 & docs/005) -->
+    <div id="dsh-execution-panel" class="panel dsh-view-panel" hidden>
+      <div class="dsh-view-header">
+        <h2>🚀 Execution Tickets & Autonomous Worker Fleet</h2>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="mini-btn dsh-ticket-filter active" data-stage="all">All Tickets</button>
+          <button type="button" class="mini-btn dsh-ticket-filter" data-stage="person">Needs Action</button>
+          <button type="button" class="mini-btn dsh-ticket-filter" data-stage="working">Working</button>
+          <button type="button" class="mini-btn dsh-ticket-filter" data-stage="idle">Idle</button>
+          <button type="button" class="mini-btn dsh-ticket-filter" data-stage="ended">Ended</button>
+        </div>
+      </div>
+      <p class="hint">Tickets progress through strict mutually exclusive lifecycle stages (person: delivery/answer/review/blocked/failed, working: active/queued, idle, ended).</p>
+      <div id="dsh-tickets-list" class="dsh-items-container">
+        <!-- Tickets rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- DSH Prompts & Skills Panel (docs/004 & docs/005) -->
+    <div id="dsh-prompts-panel" class="panel dsh-view-panel" hidden>
+      <div class="dsh-view-header">
+        <h2>📜 Prompt Assembly & DSH Agentic Skills</h2>
+        <button type="button" id="dsh-btn-save-prompt" class="action-btn" style="background:#38bdf8; color:#080c14; font-weight:700;">💾 Save Directives</button>
+      </div>
+      <p class="hint">Assembles Orchestrator, Worker, and Admission prompts with Team Directives and active MCP tool capabilities.</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px;">
+        <div>
+          <label style="color:#e2e8f0; font-weight:700; font-size:12px; display:block; margin-bottom:6px;">Team Directives & Behavioral Constraints</label>
+          <textarea id="dsh-team-prompt-input" rows="12" style="width:100%; background:#090d16; border:1px solid #1e293b; color:#cbd5e1; border-radius:8px; padding:10px; font-family:ui-monospace, monospace; font-size:12px; resize:vertical;"></textarea>
+        </div>
+        <div>
+          <label style="color:#e2e8f0; font-weight:700; font-size:12px; display:block; margin-bottom:6px;">Assembled Full Prompt Preview (with MCP Tools & Skills)</label>
+          <pre id="dsh-assembled-prompt-view" class="dsh-prompt-diff" style="max-height:240px; overflow-y:auto;"></pre>
+        </div>
+      </div>
+    </div>
   </main>
 
   <div id="mcp-modal" class="mcp-modal" hidden>
-    <div class="mcp-modal-content">
+    <div class="mcp-modal-content zcode-mcp-modal">
       <div class="mcp-modal-header">
-        <h3>🧩 Model Context Protocol (MCP) Hub</h3>
-        <button type="button" id="btn-close-mcp" class="action-btn">✕ Закрыть</button>
+        <div class="mcp-header-title-group">
+          <div class="mcp-logo-badge">🔌</div>
+          <div>
+            <h3>Model Context Protocol (MCP) Hub</h3>
+            <div class="mcp-header-status-bar" id="mcp-header-status-bar">
+              <span class="mcp-stat-item"><span class="status-dot green"></span> <span id="mcp-stat-connected">0 Connected</span></span>
+              <span class="mcp-stat-item"><span class="status-dot gray"></span> <span id="mcp-stat-disabled">0 Disabled</span></span>
+              <span class="mcp-stat-item"><span class="status-dot red"></span> <span id="mcp-stat-error">0 Error</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="mcp-header-actions">
+          <button type="button" id="btn-mcp-reload-all" class="mini-btn" title="Refresh all server statuses">🔄 Refresh</button>
+          <button type="button" id="btn-close-mcp" class="close-btn" title="Close">✕</button>
+        </div>
       </div>
+
       <div class="mcp-modal-body">
-        <div class="mcp-tabs">
-          <button type="button" class="mcp-tab-btn active" id="tab-mcp-market">🏪 Каталог Marketplace</button>
-          <button type="button" class="mcp-tab-btn" id="tab-mcp-installed">⚙️ Установленные серверы</button>
-          <button type="button" class="mcp-tab-btn" id="tab-mcp-manual">➕ Ручная установка (URL / NPX / UVX)</button>
+        <!-- ZCode Segmented Tabs -->
+        <div class="mcp-tabs zcode-segmented-tabs">
+          <button type="button" class="mcp-tab-btn active" id="tab-mcp-installed">⚡ Configured Servers (<span id="mcp-count-installed">0</span>)</button>
+          <button type="button" class="mcp-tab-btn" id="tab-mcp-market">🏪 Marketplace & Community (<span id="mcp-count-market">25+</span>)</button>
+          <button type="button" class="mcp-tab-btn" id="tab-mcp-form">➕ Add Server (UI & JSON)</button>
+          <button type="button" class="mcp-tab-btn" id="tab-mcp-raw">📋 Raw Config (~/.mika)</button>
         </div>
 
-        <div class="mcp-search-row">
-          <input type="text" id="mcp-search-query" placeholder="🔍 Поиск MCP серверов на GitHub (topic:mcp-server), Smithery AI или в каталоге...">
-          <button type="button" id="btn-sync-github" class="action-btn">🐙 Поиск на GitHub</button>
+        <!-- View 1: Installed Servers (ZCode McpServerList) -->
+        <div id="mcp-view-installed">
+          <div class="installed-servers-toolbar">
+            <span class="installed-scope-hint">Active MCP servers providing tool capabilities to AGY Brain & Coder Team</span>
+            <button type="button" id="btn-goto-add-server" class="mini-btn highlight">+ Add MCP Server</button>
+          </div>
+          <div id="mcp-installed-list" class="mcp-installed-container">
+            <p class="hint">Loading MCP servers...</p>
+          </div>
         </div>
 
-        <div class="mcp-filter-chips" id="mcp-category-chips">
-          <button type="button" class="mcp-chip active" data-cat="all">🌟 Все категории</button>
-          <button type="button" class="mcp-chip" data-cat="zcode">⚡ ZCode & ACPs</button>
-          <button type="button" class="mcp-chip" data-cat="deepseek">🧠 DeepSeek</button>
-          <button type="button" class="mcp-chip" data-cat="paseo">📊 Paseo</button>
-          <button type="button" class="mcp-chip" data-cat="dev">🛠️ Developer Tools</button>
-          <button type="button" class="mcp-chip" data-cat="db">🗄️ Database & Cloud</button>
-          <button type="button" class="mcp-chip" data-cat="github">🐙 GitHub & Smithery</button>
-        </div>
+        <!-- View 2: Marketplace Catalog -->
+        <div id="mcp-view-market" hidden>
+          <div class="mcp-search-row">
+            <input type="text" id="mcp-search-query" placeholder="🔍 Search MCP servers on GitHub (topic:mcp-server), Smithery AI, or local catalog...">
+            <button type="button" id="btn-sync-github" class="action-btn">🐙 Search GitHub</button>
+          </div>
 
-        <div id="mcp-view-market">
+          <div class="mcp-filter-chips" id="mcp-category-chips">
+            <button type="button" class="mcp-chip active" data-cat="all">🌟 All Categories</button>
+            <button type="button" class="mcp-chip" data-cat="zcode">⚡ ZCode & ACPs</button>
+            <button type="button" class="mcp-chip" data-cat="deepseek">🧠 DeepSeek</button>
+            <button type="button" class="mcp-chip" data-cat="paseo">📊 Paseo</button>
+            <button type="button" class="mcp-chip" data-cat="dev">🛠️ Developer Tools</button>
+            <button type="button" class="mcp-chip" data-cat="db">🗄️ Database & Cloud</button>
+            <button type="button" class="mcp-chip" data-cat="github">🐙 GitHub & Smithery</button>
+          </div>
+
           <div id="mcp-market-grid" class="mcp-grid">
-            <p class="hint">Загрузка каталога MCP...</p>
+            <p class="hint">Loading catalog...</p>
           </div>
         </div>
 
-        <div id="mcp-view-installed" hidden>
-          <div id="mcp-installed-grid" class="mcp-grid">
-            <p class="hint">Нет установленных серверов</p>
+        <!-- View 3: Add / Edit Server (ZCode McpServerForm) -->
+        <div id="mcp-view-form" hidden>
+          <!-- Quick Preset Templates Bar -->
+          <div class="mcp-presets-bar">
+            <span class="preset-label">⚡ 1-Click Presets:</span>
+            <div class="preset-chips">
+              <button type="button" class="preset-chip" data-preset="sqlite">🗄️ SQLite</button>
+              <button type="button" class="preset-chip" data-preset="filesystem">📁 Filesystem</button>
+              <button type="button" class="preset-chip" data-preset="fetch">🌐 Fetch</button>
+              <button type="button" class="preset-chip" data-preset="github">🐙 GitHub</button>
+              <button type="button" class="preset-chip" data-preset="puppeteer">🤖 Puppeteer</button>
+              <button type="button" class="preset-chip" data-preset="memory">🧠 Memory</button>
+              <button type="button" class="preset-chip" data-preset="postgres">🐘 Postgres</button>
+              <button type="button" class="preset-chip" data-preset="sequentialthinking">💡 SequentialThinking</button>
+              <button type="button" class="preset-chip" data-preset="zcode">⚡ ZCode Bridge</button>
+            </div>
           </div>
-        </div>
 
-        <div id="mcp-view-manual" hidden>
-          <form id="mcp-manual-form" class="manual-install-form">
-            <div class="manual-field">
-              <label for="mcp-server-id">Идентификатор сервера (ID):</label>
-              <input type="text" id="mcp-server-id" placeholder="my-mcp-server" required>
+          <!-- Dual Mode Switcher -->
+          <div class="mcp-editor-mode-bar">
+            <div class="editor-mode-toggle">
+              <button type="button" class="mode-btn active" id="btn-mode-form">📝 UI Form Mode</button>
+              <button type="button" class="mode-btn" id="btn-mode-json">📄 Raw JSON Mode</button>
             </div>
-            <div class="manual-field">
-              <label for="mcp-server-url">URL репозитория или пакета (GitHub, NPM, PyPI):</label>
-              <input type="text" id="mcp-server-url" placeholder="https://github.com/modelcontextprotocol/servers/tree/main/src/fetch">
+            <span id="form-editing-label" class="editing-indicator">New Server Configuration</span>
+          </div>
+
+          <!-- Form Mode -->
+          <form id="mcp-server-form" class="zcode-server-form">
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="form-server-name">Server Name / ID <span class="req">*</span></label>
+                <input type="text" id="form-server-name" placeholder="e.g. my-sqlite-db" required>
+              </div>
+              <div class="form-group">
+                <label for="form-server-scope">Configuration Scope</label>
+                <select id="form-server-scope">
+                  <option value="user">User (Global ~/.mika/mcp_servers.json)</option>
+                  <option value="workspace">Workspace Project (.mcp.json)</option>
+                </select>
+              </div>
             </div>
-            <div class="manual-field">
-              <label for="mcp-server-cmd">Команда запуска (Command & Arguments):</label>
-              <input type="text" id="mcp-server-cmd" placeholder="npx -y @modelcontextprotocol/server-fetch">
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="form-server-transport">Transport Protocol</label>
+                <select id="form-server-transport">
+                  <option value="stdio">stdio (Local Command / Process)</option>
+                  <option value="http">http (Streamable HTTP Endpoint)</option>
+                  <option value="sse">sse (Server-Sent Events)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="form-server-timeout">Timeout (ms)</label>
+                <input type="number" id="form-server-timeout" value="5000" placeholder="5000">
+              </div>
             </div>
-            <div class="manual-field">
-              <label for="mcp-server-env">Переменные окружения (JSON):</label>
-              <input type="text" id="mcp-server-env" placeholder='{"API_KEY": "..."}'>
+
+            <!-- Stdio Fields -->
+            <div id="form-stdio-fields">
+              <div class="form-group">
+                <label for="form-server-command">Command Executable <span class="req">*</span></label>
+                <input type="text" id="form-server-command" placeholder="npx, uvx, python3, or binary path">
+              </div>
+              <div class="form-group">
+                <label for="form-server-args">Command Arguments (space separated)</label>
+                <input type="text" id="form-server-args" placeholder="-y @modelcontextprotocol/server-sqlite --db-path ./data.db">
+              </div>
+              <div class="form-group">
+                <label for="form-server-env">Environment Variables (JSON Key-Value)</label>
+                <textarea id="form-server-env" rows="3" placeholder='{\n  "API_KEY": "secret"\n}'></textarea>
+              </div>
             </div>
-            <button type="submit" class="primary">📦 Установить MCP Сервер</button>
+
+            <!-- HTTP / SSE Fields -->
+            <div id="form-http-fields" hidden>
+              <div class="form-group">
+                <label for="form-server-url">Endpoint URL <span class="req">*</span></label>
+                <input type="url" id="form-server-url" placeholder="https://mcp.example.com/v1/sse">
+              </div>
+              <div class="form-group">
+                <label for="form-server-headers">HTTP Headers (JSON Key-Value)</label>
+                <textarea id="form-server-headers" rows="3" placeholder='{\n  "Authorization": "Bearer token"\n}'></textarea>
+              </div>
+            </div>
+
+            <!-- Probe Result Banner -->
+            <div id="form-probe-banner" class="probe-banner" hidden>
+              <span id="form-probe-icon">⚡</span>
+              <span id="form-probe-text">Testing connection...</span>
+            </div>
+
+            <div class="form-actions-row">
+              <button type="submit" class="action-btn primary-btn">💾 Save & Connect Server</button>
+              <button type="button" id="btn-form-probe" class="action-btn secondary-btn">⚡ Test Connectivity</button>
+              <button type="button" id="btn-form-reset" class="action-btn">✕ Reset</button>
+            </div>
           </form>
+
+          <!-- JSON Mode -->
+          <div id="mcp-json-editor-pane" class="json-editor-pane" hidden>
+            <div class="json-editor-header">
+              <span>Edit Single Server JSON (compatible with ZCode, Claude Desktop & Cursor)</span>
+              <button type="button" id="btn-json-format" class="mini-btn">✨ Format JSON</button>
+            </div>
+            <textarea id="form-json-draft" class="code-textarea" rows="11" spellcheck="false" placeholder='{\n  "my-server": {\n    "command": "npx",\n    "args": ["-y", "@modelcontextprotocol/server-sqlite"]\n  }\n}'></textarea>
+            <div id="form-json-error" class="json-error-banner" hidden></div>
+            <div class="form-actions-row">
+              <button type="button" id="btn-save-json-draft" class="action-btn primary-btn">💾 Apply & Save Server</button>
+              <button type="button" id="btn-cancel-json-draft" class="action-btn">✕ Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- View 4: Raw Config Editor (~/.mika/mcp_servers.json) -->
+        <div id="mcp-view-raw" hidden>
+          <div class="raw-config-header">
+            <div>
+              <strong>Global Configuration File</strong>
+              <span class="file-path-badge">~/.mika/mcp_servers.json</span>
+            </div>
+            <div class="raw-actions">
+              <button type="button" id="btn-format-raw" class="mini-btn">✨ Format</button>
+              <button type="button" id="btn-reload-raw" class="mini-btn">🔄 Reload</button>
+              <button type="button" id="btn-save-raw" class="mini-btn highlight">💾 Save Changes</button>
+            </div>
+          </div>
+          <textarea id="raw-config-textarea" class="raw-config-textarea" rows="15" spellcheck="false"></textarea>
+          <div id="raw-save-status" class="raw-status-banner" hidden></div>
         </div>
       </div>
     </div>

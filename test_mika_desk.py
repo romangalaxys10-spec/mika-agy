@@ -154,6 +154,76 @@ def run_qa():
         assert data.get("exit_code") == 0
         print(f"✅ POST /desk (project_run Live Execution): 200 OK — Executed '{data['command']}' in {data['duration']}s with exit_code=0!")
 
+    # 10. Test DeepSeek Harness Superagent (DSH) Endpoints
+    # 10a. DSH Overview (3 Questions)
+    post_data = json.dumps({"action": "dsh_overview"}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data.get("status") == "ok"
+        ov = data.get("overview", {})
+        assert "person" in ov
+        assert "flow" in ov
+        assert "executor" in ov
+        print(f"✅ POST /desk (dsh_overview): 200 OK — Needs Action: {len(ov['person'])}, Flow: {ov['flow']['received']}, Workers: {ov['executor']['running']}/{ov['executor']['maxWorkers']}")
+
+    # 10b. DSH Triggers & Threads
+    post_data = json.dumps({"action": "dsh_triggers", "filter": "all"}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data.get("status") == "ok"
+        trigs = data.get("triggers", [])
+        assert len(trigs) >= 2
+        print(f"✅ POST /desk (dsh_triggers): 200 OK — Found {len(trigs)} active inbound triggers & threads!")
+
+    # 10c. DSH Policy & Evals (R1 Chain of Thought)
+    post_data = json.dumps({"action": "dsh_evals"}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data.get("status") == "ok"
+        evals = data.get("evals", [])
+        assert len(evals) >= 2
+        assert "r1_thought" in evals[0]
+        print(f"✅ POST /desk (dsh_evals): 200 OK — R1 Verification Traces verified ({len(evals)} evals, {len(data['policy']['rules'])} rules)!")
+
+    # 10d. DSH Execution Tickets & Stages
+    post_data = json.dumps({"action": "dsh_tickets", "stage": "all"}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data.get("status") == "ok"
+        tickets = data.get("tickets", [])
+        assert len(tickets) >= 3
+        print(f"✅ POST /desk (dsh_tickets): 200 OK — Found {len(tickets)} tickets across person/working/ended stages!")
+
+    # 10e. DSH Prompts & Skills Assembly
+    post_data = json.dumps({"action": "dsh_prompts"}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data.get("status") == "ok"
+        assert "assembled" in data
+        assert "orchestrator" in data["active"]
+        print(f"✅ POST /desk (dsh_prompts): 200 OK — Prompts & DSH Skills assembled successfully!")
+
+    # 10f. DSH Pause / Resume Toggle
+    post_data = json.dumps({"action": "dsh_pause"}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data.get("status") == "ok"
+        print(f"✅ POST /desk (dsh_pause): 200 OK — Engine paused={data.get('paused')} successfully!")
+
+    # Resume engine back
+    post_data = json.dumps({"action": "dsh_pause", "paused": False}).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/desk", data=post_data, headers=headers)
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data.get("status") == "ok"
+        print("✅ POST /desk (dsh_resume): 200 OK — Engine resumed back to active state!")
+
     server.shutdown()
     print("🎉 ALL QA TESTS PASSED! ZERO LOAD FAILED OR DISCONNECT ISSUES!")
 

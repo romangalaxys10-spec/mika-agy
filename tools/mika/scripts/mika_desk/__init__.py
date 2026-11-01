@@ -30,10 +30,28 @@ FIELDS = {
     "steer": {"task_id", "text"}, "open_file": {"path"},
     "mcp_market": set(), "mcp_servers": set(), "mcp_install": {"id", "config", "server_id"},
     "mcp_uninstall": {"id", "server_id"}, "mcp_toggle": {"id", "enabled", "server_id"}, "horizon": {"task_id", "goal"}, "mcp_search": {"query"},
+    "mcp_probe": {"id", "config"}, "mcp_raw_config": set(), "mcp_save_raw": {"raw"},
     "coder_team": {"task_id", "goal"},
-    "project_tree": {"workspace"}, "project_read_file": {"path"}, "project_run": {"workspace", "command"}
+    "project_tree": {"workspace"}, "project_read_file": {"path"}, "project_run": {"workspace", "command"},
+    "dsh_overview": set(), "dsh_pause": {"paused"}, "dsh_tickets": {"stage"},
+    "dsh_ticket_retry": {"ticket_id"}, "dsh_ticket_answer": {"ticket_id", "answer"}, "dsh_ticket_approve": {"ticket_id"},
+    "dsh_triggers": {"filter"}, "dsh_requeue": {"trigger_id"}, "dsh_evals": set(),
+    "dsh_prompts": set(), "dsh_save_prompt": {"section", "text"}
 }
 
+
+def _ensure_backend_paths():
+    candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "agent-server")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")),
+        "/Applications/Mika.app/Contents/Resources/mika-core",
+        "/Users/ekaterina.gwaladze/.gemini/antigravity/scratch/mika/agent-server",
+    ]
+    for c in candidates:
+        if os.path.isdir(c) and c not in sys.path:
+            sys.path.insert(0, c)
 
 def command(data):
     if not isinstance(data, dict):
@@ -107,6 +125,8 @@ class Desk(ThreadingHTTPServer):
             self.args.device = choice
 
     def dispatch(self, action, data, sensitive):
+        _ensure_backend_paths()
+
         if action == "open_file":
             path = data.get("path", "")
             if path and os.path.exists(path):
@@ -115,25 +135,101 @@ class Desk(ThreadingHTTPServer):
                 return {"opened": True, "path": path}
             return {"opened": False, "error": "file not found"}
 
+        # DeepSeek Harness Superagent (DSH) Endpoints
+        if action == "dsh_overview":
+            try:
+                from mika_dsh_engine import dsh_engine
+                return {"status": "ok", "overview": dsh_engine.get_overview()}
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "dsh_pause":
+            try:
+                from mika_dsh_engine import dsh_engine
+                return dsh_engine.toggle_pause(data.get("paused"))
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "dsh_tickets":
+            try:
+                from mika_dsh_engine import dsh_engine
+                return dsh_engine.list_tickets(data.get("stage", "all"))
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "dsh_ticket_retry":
+            try:
+                from mika_dsh_engine import dsh_engine
+                return dsh_engine.retry_ticket(data.get("ticket_id"))
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "dsh_ticket_answer":
+            try:
+                from mika_dsh_engine import dsh_engine
+                return dsh_engine.answer_ticket(data.get("ticket_id"), data.get("answer", ""))
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "dsh_ticket_approve":
+            try:
+                from mika_dsh_engine import dsh_engine
+                return dsh_engine.approve_ticket(data.get("ticket_id"))
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "dsh_triggers":
+            try:
+                from mika_dsh_engine import dsh_engine
+                return dsh_engine.list_triggers(data.get("filter"))
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "dsh_requeue":
+            try:
+                from mika_dsh_engine import dsh_engine
+                return dsh_engine.requeue_trigger(data.get("trigger_id"))
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "dsh_evals":
+            try:
+                from mika_dsh_engine import dsh_engine
+                return dsh_engine.list_evals()
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "dsh_prompts":
+            try:
+                from mika_dsh_engine import dsh_engine
+                return dsh_engine.get_prompts()
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "dsh_save_prompt":
+            try:
+                from mika_dsh_engine import dsh_engine
+                return dsh_engine.save_prompt(data.get("section", "team_custom"), data.get("text", ""))
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        # MCP Engine Endpoints
         if action == "mcp_market":
             try:
-                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
                 from mika_mcp_engine import mcp_engine
                 return {"status": "ok", "marketplace": mcp_engine.list_marketplace()}
             except Exception as e:
-                return {"status": "ok", "marketplace": []}
+                return {"status": "error", "error": str(e), "marketplace": []}
 
         if action == "mcp_search":
             try:
-                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
                 from mika_mcp_engine import mcp_engine
                 return {"status": "ok", "results": mcp_engine.search_external_mcp(data.get("query", ""))}
             except Exception as e:
-                return {"status": "ok", "results": []}
+                return {"status": "error", "error": str(e), "results": []}
 
         if action == "coder_team":
             try:
-                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
                 from mika_coder_team import coder_team
                 res = coder_team.execute_task(data.get("goal", "Full development cycle"))
                 return {"status": "completed", "result": res}
@@ -142,15 +238,13 @@ class Desk(ThreadingHTTPServer):
 
         if action == "mcp_servers":
             try:
-                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
                 from mika_mcp_engine import mcp_engine
                 return {"status": "ok", "servers": mcp_engine.list_installed()}
             except Exception as e:
-                return {"status": "ok", "servers": []}
+                return {"status": "error", "error": str(e), "servers": []}
 
         if action == "mcp_install":
             try:
-                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
                 from mika_mcp_engine import mcp_engine
                 sid = data.get("id") or data.get("server_id")
                 return mcp_engine.install_server(sid, data.get("config"))
@@ -159,7 +253,6 @@ class Desk(ThreadingHTTPServer):
 
         if action == "mcp_uninstall":
             try:
-                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
                 from mika_mcp_engine import mcp_engine
                 sid = data.get("id") or data.get("server_id")
                 return mcp_engine.uninstall_server(sid)
@@ -168,10 +261,30 @@ class Desk(ThreadingHTTPServer):
 
         if action == "mcp_toggle":
             try:
-                sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agent-server"))
                 from mika_mcp_engine import mcp_engine
                 sid = data.get("id") or data.get("server_id")
                 return mcp_engine.toggle_server(sid, data.get("enabled", True))
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "mcp_probe":
+            try:
+                from mika_mcp_engine import mcp_engine
+                return mcp_engine.probe_server(data.get("id"), data.get("config"))
+            except Exception as e:
+                return {"success": False, "status": "error", "error": str(e)}
+
+        if action == "mcp_raw_config":
+            try:
+                from mika_mcp_engine import mcp_engine
+                return mcp_engine.get_raw_config()
+            except Exception as e:
+                return {"status": "error", "error": str(e)}
+
+        if action == "mcp_save_raw":
+            try:
+                from mika_mcp_engine import mcp_engine
+                return mcp_engine.save_raw_config(data.get("raw", "{}"))
             except Exception as e:
                 return {"status": "error", "error": str(e)}
 
@@ -357,7 +470,8 @@ class Handler(BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(size))
             action = command(data)
             for value in data.values():
-                value.encode("utf-8")  # Reject unpaired surrogates before contacting the phone.
+                if isinstance(value, str):
+                    value.encode("utf-8")  # Reject unpaired surrogates before contacting the phone.
         except (ValueError, RecursionError):
             return self.send(400, b"Invalid desk command")
 
